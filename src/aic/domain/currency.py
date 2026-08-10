@@ -1,0 +1,61 @@
+"""ISO 4217 currency code validation.
+
+ISO_4217_CURRENCY_CODES is vendored from the official ISO 4217 active currency
+and fund code list (alphabetic codes) rather than pulled from a third-party
+package, per the project's "avoid unnecessary dependencies" principle — this
+data set is small (~180 entries) and changes only rarely (ISO adds/removes a
+handful of codes roughly once every few years).
+
+To regenerate: re-copy the current active-code list published by the ISO 4217
+maintenance agency (https://www.iso.org/iso-4217-currency-codes.html) and
+replace the contents of this frozenset.
+"""
+
+from typing import Annotated
+
+from pydantic import AfterValidator
+
+ISO_4217_CURRENCY_CODES: frozenset[str] = frozenset(
+    {
+        "AED", "AFN", "ALL", "AMD", "ANG", "AOA", "ARS", "AUD", "AWG", "AZN",
+        "BAM", "BBD", "BDT", "BGN", "BHD", "BIF", "BMD", "BND", "BOB", "BOV",
+        "BRL", "BSD", "BTN", "BWP", "BYN", "BZD",
+        "CAD", "CDF", "CHE", "CHF", "CHW", "CLF", "CLP", "CNY", "COP", "COU",
+        "CRC", "CUC", "CUP", "CVE", "CZK",
+        "DJF", "DKK", "DOP", "DZD",
+        "EGP", "ERN", "ETB", "EUR",
+        "FJD", "FKP",
+        "GBP", "GEL", "GHS", "GIP", "GMD", "GNF", "GTQ", "GYD",
+        "HKD", "HNL", "HTG", "HUF",
+        "IDR", "ILS", "INR", "IQD", "IRR", "ISK",
+        "JMD", "JOD", "JPY",
+        "KES", "KGS", "KHR", "KMF", "KPW", "KRW", "KWD", "KYD", "KZT",
+        "LAK", "LBP", "LKR", "LRD", "LSL", "LYD",
+        "MAD", "MDL", "MGA", "MKD", "MMK", "MNT", "MOP", "MRU", "MUR", "MVR",
+        "MWK", "MXN", "MXV", "MYR", "MZN",
+        "NAD", "NGN", "NIO", "NOK", "NPR", "NZD",
+        "OMR",
+        "PAB", "PEN", "PGK", "PHP", "PKR", "PLN", "PYG",
+        "QAR",
+        "RON", "RSD", "RUB", "RWF",
+        "SAR", "SBD", "SCR", "SDG", "SEK", "SGD", "SHP", "SLE", "SOS", "SRD",
+        "SSP", "STN", "SVC", "SYP", "SZL",
+        "THB", "TJS", "TMT", "TND", "TOP", "TRY", "TTD", "TWD", "TZS",
+        "UAH", "UGX", "USD", "USN", "UYI", "UYU", "UYW", "UZS",
+        "VED", "VES", "VND", "VUV",
+        "WST",
+        "XAF", "XAG", "XAU", "XBA", "XBB", "XBC", "XBD", "XCD", "XDR", "XOF",
+        "XPD", "XPF", "XPT", "XSU", "XTS", "XUA", "XXX",
+        "YER",
+        "ZAR", "ZMW", "ZWL",
+    }
+)
+
+
+def _validate_currency_code(value: str) -> str:
+    if value not in ISO_4217_CURRENCY_CODES:
+        raise ValueError(f"{value!r} is not a valid ISO 4217 currency code")
+    return value
+
+
+CurrencyCode = Annotated[str, AfterValidator(_validate_currency_code)]
