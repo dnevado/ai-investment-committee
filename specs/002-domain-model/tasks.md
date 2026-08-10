@@ -77,13 +77,13 @@ Single project, `src`-layout (per plan.md, unchanged from 001-repository-bootstr
 
 ### Implementation for User Story 2
 
-- [ ] T013 [P] [US2] Create `src/aic/domain/evidence.py` with the `Evidence` model — `evidence_id: UUID` (required, caller-supplied), `source`, `title`, `excerpt`, `retrieved_date` required; `reference`, `publication_date` optional; `evidence_type: EvidenceType` (depends on T002, T005; FR-002, FR-003, FR-010; data-model.md Evidence)
-- [ ] T014 [US2] Create `src/aic/domain/thesis.py` with the `InvestmentThesis` model — `summary`, `supporting_evidence: list[Evidence]`, `key_assumptions`, `key_risks`, `invalidation_conditions` (depends on T013; FR-005; data-model.md InvestmentThesis)
-- [ ] T015 [US2] Create `src/aic/domain/investment_case.py` with the `InvestmentCase` model — `case_id: UUID` (required, caller-supplied), `analysis_timestamp: datetime` (UTC, auto via `default_factory`), `company: Company`, `financial_snapshots: list[FinancialSnapshot]` (min length 1), `thesis: InvestmentThesis`, `evidence: list[Evidence]` (depends on T006, T007, T014; FR-006, FR-010; data-model.md InvestmentCase)
-- [ ] T016 [US2] Add `Evidence`, `InvestmentThesis`, `InvestmentCase` exports to `src/aic/domain/__init__.py` (depends on T008, T013, T014, T015; same file)
-- [ ] T017 [P] [US2] Create `tests/unit/domain/test_evidence.py` covering valid construction without a URL, correct evidence-type classification, rejection of an out-of-set evidence type, and round-trip serialization (FR-002, FR-003; spec US2 acceptance scenarios 1-2)
-- [ ] T018 [P] [US2] Create `tests/unit/domain/test_thesis.py` covering valid construction and round-trip serialization (FR-005; spec US2 acceptance scenario 3)
-- [ ] T019 [P] [US2] Create `tests/unit/domain/test_investment_case.py` covering assembly from `Company`/`FinancialSnapshot`(s)/`InvestmentThesis`/`Evidence`, the minimum-one-snapshot rule, stable identifier/timestamp exposure, and round-trip serialization (FR-006; spec US2 acceptance scenario 4)
+- [X] T013 [P] [US2] Create `src/aic/domain/evidence.py` with the `Evidence` model — `evidence_id: UUID` (required, caller-supplied), `source`, `title`, `excerpt`, `retrieved_date` required; `reference`, `publication_date` optional; `evidence_type: EvidenceType` (depends on T002, T005; FR-002, FR-003, FR-010; data-model.md Evidence)
+- [X] T014 [US2] Create `src/aic/domain/thesis.py` with the `InvestmentThesis` model — `summary`, `supporting_evidence: list[Evidence]`, `key_assumptions`, `key_risks`, `invalidation_conditions` (depends on T013; FR-005; data-model.md InvestmentThesis)
+- [X] T015 [US2] Create `src/aic/domain/investment_case.py` with the `InvestmentCase` model — `case_id: UUID` (required, caller-supplied), `analysis_timestamp: datetime` (UTC, auto via `default_factory`), `company: Company`, `financial_snapshots: list[FinancialSnapshot]` (min length 1), `thesis: InvestmentThesis`, `evidence: list[Evidence]` (depends on T006, T007, T014; FR-006, FR-010; data-model.md InvestmentCase)
+- [X] T016 [US2] Add `Evidence`, `InvestmentThesis`, `InvestmentCase` exports to `src/aic/domain/__init__.py` (depends on T008, T013, T014, T015; same file)
+- [X] T017 [P] [US2] Create `tests/unit/domain/test_evidence.py` covering valid construction without a URL, correct evidence-type classification, rejection of an out-of-set evidence type, and round-trip serialization (FR-002, FR-003; spec US2 acceptance scenarios 1-2)
+- [X] T018 [P] [US2] Create `tests/unit/domain/test_thesis.py` covering valid construction and round-trip serialization (FR-005; spec US2 acceptance scenario 3)
+- [X] T019 [P] [US2] Create `tests/unit/domain/test_investment_case.py` covering assembly from `Company`/`FinancialSnapshot`(s)/`InvestmentThesis`/`Evidence`, the minimum-one-snapshot rule, stable identifier/timestamp exposure, and round-trip serialization (FR-006; spec US2 acceptance scenario 4)
 
 **Checkpoint**: User Stories 1 AND 2 both work independently.
 
@@ -211,3 +211,16 @@ Task: "Create tests/unit/domain/test_money.py"
 ## Phase 7: Convergence
 
 - [X] T032 [P] [US1] Add a `model_dump()`/`model_validate()` round-trip serialization test for `Company` in `tests/unit/domain/test_company.py` per SC-004 (partial)
+
+---
+
+## Phase 8: Convergence
+
+- [X] T033 [P] [US2] Add a parametrized required-field-validation test to `tests/unit/domain/test_evidence.py` (missing `evidence_id`, `source`, `title`, `excerpt`, or `retrieved_date` each raise `ValidationError`) per SC-001 (partial)
+
+---
+
+## Phase 9: Convergence
+
+- [X] T034 [P] [US2] Add a parametrized required-field-validation test to `tests/unit/domain/test_investment_case.py` (missing `case_id`, `company`, or `thesis` each raise `ValidationError`) per SC-001 (partial)
+- [X] T035 [P] [US2] Add a required-field-validation test to `tests/unit/domain/test_thesis.py` (missing `summary` raises `ValidationError`) per SC-001 (partial)
