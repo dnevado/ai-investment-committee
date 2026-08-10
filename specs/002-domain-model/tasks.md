@@ -97,13 +97,13 @@ Single project, `src`-layout (per plan.md, unchanged from 001-repository-bootstr
 
 ### Implementation for User Story 3
 
-- [ ] T020 [P] [US3] Create `src/aic/domain/assessment.py` with the `AnalysisAssessment` model — `assessment_id: UUID` (required, caller-supplied), `conclusion`, `arguments`, `supporting_evidence: list[UUID]`, `assumptions`, `risks`, `confidence: float` (0.0-1.0 bounded); no field or the type name encodes "Bull"/"Bear" (FR-007, FR-010; data-model.md AnalysisAssessment)
-- [ ] T021 [P] [US3] Create `src/aic/domain/valuation.py` with the `ValuationResult` model — `valuation_id: UUID` (required, caller-supplied), `method`, `valuation_date`, `estimated_value: Money`, `assumption_evidence_refs: list[UUID]`, `confidence: float` (0.0-1.0 bounded) (depends on T004; FR-008, FR-010; data-model.md ValuationResult)
-- [ ] T022 [US3] Create `src/aic/domain/decision.py` with the `CommitteeDecision` model — `decision_id: UUID` (required, caller-supplied), `decision_timestamp: datetime` (UTC, auto via `default_factory`), `recommendation: Recommendation`, `rationale`, `referenced_evidence: list[UUID]`, `referenced_thesis: InvestmentThesis | None`, `valuation_reference: UUID | None`, `dissent: list[str]` (depends on T002, T005, T014; FR-009, FR-010; data-model.md CommitteeDecision)
-- [ ] T023 [US3] Add `AnalysisAssessment`, `ValuationResult`, `CommitteeDecision` exports to `src/aic/domain/__init__.py` (depends on T016, T020, T021, T022; same file)
-- [ ] T024 [P] [US3] Create `tests/unit/domain/test_assessment.py` covering valid construction, absence of any Bull/Bear naming in the type or fields, and round-trip serialization (FR-007; spec US3 acceptance scenario 1)
-- [ ] T025 [P] [US3] Create `tests/unit/domain/test_valuation.py` covering valid construction using `Money`, absence of any calculation behavior, and round-trip serialization (FR-008; spec US3 acceptance scenario 2)
-- [ ] T026 [P] [US3] Create `tests/unit/domain/test_decision.py` covering valid construction with and without a `valuation_reference`, rejection of an invalid `recommendation` value, and round-trip serialization (FR-009; spec US3 acceptance scenarios 3-4)
+- [X] T020 [P] [US3] Create `src/aic/domain/assessment.py` with the `AnalysisAssessment` model — `assessment_id: UUID` (required, caller-supplied), `conclusion`, `arguments`, `supporting_evidence: list[UUID]`, `assumptions`, `risks`, `confidence: float` (0.0-1.0 bounded); no field or the type name encodes "Bull"/"Bear" (FR-007, FR-010; data-model.md AnalysisAssessment)
+- [X] T021 [P] [US3] Create `src/aic/domain/valuation.py` with the `ValuationResult` model — `valuation_id: UUID` (required, caller-supplied), `method`, `valuation_date`, `estimated_value: Money`, `assumption_evidence_refs: list[UUID]`, `confidence: float` (0.0-1.0 bounded) (depends on T004; FR-008, FR-010; data-model.md ValuationResult)
+- [X] T022 [US3] Create `src/aic/domain/decision.py` with the `CommitteeDecision` model — `decision_id: UUID` (required, caller-supplied), `decision_timestamp: datetime` (UTC, auto via `default_factory`), `recommendation: Recommendation`, `rationale`, `referenced_evidence: list[UUID]`, `referenced_thesis: InvestmentThesis | None`, `valuation_reference: UUID | None`, `dissent: list[str]` (depends on T002, T005, T014; FR-009, FR-010; data-model.md CommitteeDecision)
+- [X] T023 [US3] Add `AnalysisAssessment`, `ValuationResult`, `CommitteeDecision` exports to `src/aic/domain/__init__.py` (depends on T016, T020, T021, T022; same file)
+- [X] T024 [P] [US3] Create `tests/unit/domain/test_assessment.py` covering valid construction, absence of any Bull/Bear naming in the type or fields, and round-trip serialization (FR-007; spec US3 acceptance scenario 1)
+- [X] T025 [P] [US3] Create `tests/unit/domain/test_valuation.py` covering valid construction using `Money`, absence of any calculation behavior, and round-trip serialization (FR-008; spec US3 acceptance scenario 2)
+- [X] T026 [P] [US3] Create `tests/unit/domain/test_decision.py` covering valid construction with and without a `valuation_reference`, rejection of an invalid `recommendation` value, and round-trip serialization (FR-009; spec US3 acceptance scenarios 3-4)
 
 **Checkpoint**: All three user stories are independently functional.
 
@@ -224,3 +224,10 @@ Task: "Create tests/unit/domain/test_money.py"
 
 - [X] T034 [P] [US2] Add a parametrized required-field-validation test to `tests/unit/domain/test_investment_case.py` (missing `case_id`, `company`, or `thesis` each raise `ValidationError`) per SC-001 (partial)
 - [X] T035 [P] [US2] Add a required-field-validation test to `tests/unit/domain/test_thesis.py` (missing `summary` raises `ValidationError`) per SC-001 (partial)
+
+---
+
+## Phase 10: Convergence
+
+- [X] T036 [P] [US1] Add a parametrized required-field-validation test to `tests/unit/domain/test_money.py` (missing `amount` or `currency` each raise `ValidationError`) per SC-001 (partial)
+- [X] T037 [P] [US1] Add a required-field-validation test to `tests/unit/domain/test_financial_snapshot.py` (missing `as_of` raises `ValidationError`) per SC-001 (partial)

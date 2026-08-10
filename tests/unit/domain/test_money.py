@@ -17,6 +17,14 @@ def test_rejects_invalid_currency() -> None:
         Money(amount=Decimal(1), currency="NOTREAL")
 
 
+@pytest.mark.parametrize("missing_field", ["amount", "currency"])
+def test_required_field_validation(missing_field: str) -> None:
+    kwargs = {"amount": Decimal("850.00"), "currency": "EUR"}
+    del kwargs[missing_field]
+    with pytest.raises(ValidationError):
+        Money(**kwargs)
+
+
 def test_round_trip_serialization() -> None:
     money = Money(amount=Decimal("850.00"), currency="EUR")
     restored = Money.model_validate(money.model_dump())

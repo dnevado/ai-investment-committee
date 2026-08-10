@@ -29,6 +29,11 @@ def test_all_metrics_optional() -> None:
     assert snapshot.shares_outstanding is None
 
 
+def test_required_field_validation() -> None:
+    with pytest.raises(ValidationError):
+        FinancialSnapshot()
+
+
 def test_rejects_monetary_metric_with_invalid_currency() -> None:
     with pytest.raises(ValidationError):
         FinancialSnapshot(
