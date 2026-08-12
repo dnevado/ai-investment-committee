@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" width="200" height="240" role="img" aria-label="AI Investment Committee logo">
+  <defs>
+    <linearGradient id="shieldFill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#132A4E"/>
+      <stop offset="100%" stop-color="#0A1830"/>
+    </linearGradient>
+    <linearGradient id="barFill" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0%" stop-color="#C9A227"/>
+      <stop offset="100%" stop-color="#F0D77B"/>
+    </linearGradient>
+  </defs>
+
+  <path d="M100,8
+           C132,8 162,19 174,35
+           L174,112
+           C174,164 142,204 100,228
+           C58,204 26,164 26,112
+           L26,35
+           C38,19 68,8 100,8 Z"
+        fill="url(#shieldFill)" stroke="#C9A227" stroke-width="4"/>
+
+  <path d="M100,8
+           C132,8 162,19 174,35
+           L174,112
+           C174,164 142,204 100,228
+           C58,204 26,164 26,112
+           L26,35
+           C38,19 68,8 100,8 Z"
+        fill="none" stroke="#F0D77B" stroke-width="1" opacity="0.35"/>
+
+  <g>
+    <rect x="54" y="140" width="16" height="32" rx="1.5" fill="url(#barFill)"/>
+    <rect x="76" y="118" width="16" height="54" rx="1.5" fill="url(#barFill)"/>
+    <rect x="98" y="96"  width="16" height="76" rx="1.5" fill="url(#barFill)"/>
+    <rect x="120" y="70" width="16" height="102" rx="1.5" fill="url(#barFill)"/>
+  </g>
+
+  <polyline points="52,136 78,112 100,90 122,64 140,50"
+            fill="none" stroke="#5FD68A" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <polygon points="140,50 129,53 138,61" fill="#5FD68A"/>
+
+  <line x1="52" y1="184" x2="148" y2="184" stroke="#C9A227" stroke-width="3" stroke-linecap="round" opacity="0.8"/>
+</svg>
