@@ -14,10 +14,9 @@ Sync Impact Report
   - TODO(ORIGINAL_RATIFICATION_DATE): The informal CONSTITUION.md is undated in origin (only
     "Last Updated: 2026-08-09" is known, matching repo initialization). Ratification date below
     uses 2026-08-09 as the effective adoption date of this formal governance file.
-  - CONSTITUION.md at the repo root is now superseded by this file and should be removed or
-    replaced with a pointer to avoid drift between two "constitution" documents. Not modified
-    here because it falls outside the scope of the constitution-update workflow (see Next
-    Actions below).
+  - RESOLVED 2026-08-12: the informal root-level file (renamed CONSTITUION.md →
+    CONSTITUTION.md to fix a typo) now contains only a pointer to this file, removing the
+    two-document drift risk noted above.
 -->
 
 # AI Investment Committee Constitution
@@ -188,7 +187,8 @@ unrelated files.
 ## Governance
 
 This Constitution supersedes conflicting practices described elsewhere in the repository,
-including the informal root-level `CONSTITUION.md`. Where a requirement conflicts with this
+including the informal root-level `CONSTITUTION.md` (which now just points back to this file).
+Where a requirement conflicts with this
 document, resolve in this priority order: (1) explicit user requirement, (2) the current feature
 specification, (3) this Constitution's architecture principles, (4) convenience. `CLAUDE.md`
 remains the operative runtime guidance file for day-to-day implementation behavior and MUST stay
