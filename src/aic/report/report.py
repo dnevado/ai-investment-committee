@@ -17,3 +17,5 @@ class CommitteeReport(BaseModel):
     dcf_result: DCFResult
     assessment: AnalysisAssessment
     decision: CommitteeDecision
+    bull_assessment: AnalysisAssessment | None = None
+    bear_assessment: AnalysisAssessment | None = None

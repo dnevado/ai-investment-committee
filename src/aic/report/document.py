@@ -1,4 +1,4 @@
-from aic.domain import Evidence
+from aic.domain import AnalysisAssessment, Evidence
 from aic.report.report import CommitteeReport
 
 
@@ -52,10 +52,33 @@ def _render_dissent(dissent: list[str]) -> str:
     return "\n".join(f"- {item}" for item in dissent)
 
 
+def _render_assessment_body(assessment: AnalysisAssessment) -> str:
+    return (
+        f"{assessment.conclusion}\n\n"
+        f"Confidence: {assessment.confidence}\n\n"
+        "### Arguments\n\n"
+        f"{_render_list(assessment.arguments)}\n\n"
+        "### Assumptions\n\n"
+        f"{_render_list(assessment.assumptions)}\n\n"
+        "### Risks\n\n"
+        f"{_render_list(assessment.risks)}"
+    )
+
+
+def _render_assessment_section(report: CommitteeReport) -> str:
+    if report.bull_assessment is not None and report.bear_assessment is not None:
+        return (
+            "## Bull Case Assessment\n\n"
+            f"{_render_assessment_body(report.bull_assessment)}\n\n"
+            "## Bear Case Assessment\n\n"
+            f"{_render_assessment_body(report.bear_assessment)}"
+        )
+    return "## Committee Assessment\n\n" f"{_render_assessment_body(report.assessment)}"
+
+
 def render_report_document(report: CommitteeReport) -> str:
     company = report.company
     thesis = report.thesis
-    assessment = report.assessment
     decision = report.decision
     return (
         f"# Investment Committee Report: {company.name} ({company.ticker})\n\n"
@@ -74,15 +97,7 @@ def render_report_document(report: CommitteeReport) -> str:
         f"{_render_list(thesis.invalidation_conditions)}\n\n"
         "## DCF Valuation\n\n"
         f"{_render_dcf_valuation(report)}\n\n"
-        "## Committee Assessment\n\n"
-        f"{assessment.conclusion}\n\n"
-        f"Confidence: {assessment.confidence}\n\n"
-        "### Arguments\n\n"
-        f"{_render_list(assessment.arguments)}\n\n"
-        "### Assumptions\n\n"
-        f"{_render_list(assessment.assumptions)}\n\n"
-        "### Risks\n\n"
-        f"{_render_list(assessment.risks)}\n\n"
+        f"{_render_assessment_section(report)}\n\n"
         "## Committee Decision\n\n"
         f"Recommendation: {decision.recommendation.value}\n\n"
         f"Rationale: {decision.rationale}\n\n"
