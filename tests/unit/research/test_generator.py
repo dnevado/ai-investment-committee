@@ -104,6 +104,9 @@ def test_generate_thesis_rejects_untraceable_evidence_id() -> None:
         content={
             "summary": "Fabricated claim.",
             "supporting_evidence_ids": [str(uuid4())],
+            "key_assumptions": [],
+            "key_risks": [],
+            "invalidation_conditions": [],
         }
     )
 
@@ -132,7 +135,13 @@ def test_generate_thesis_logs_token_usage_and_latency(
 ) -> None:
     context = _context([_evidence()])
     provider = FakeLLMProvider(
-        content={"summary": "No supporting detail yet."},
+        content={
+            "summary": "No supporting detail yet.",
+            "supporting_evidence_ids": [],
+            "key_assumptions": [],
+            "key_risks": [],
+            "invalidation_conditions": [],
+        },
         prompt_tokens=120,
         completion_tokens=80,
         latency_ms=42.0,
@@ -154,6 +163,9 @@ def test_generate_thesis_succeeds_with_zero_supplied_evidence() -> None:
         content={
             "summary": "No supporting detail yet.",
             "supporting_evidence_ids": [],
+            "key_assumptions": [],
+            "key_risks": [],
+            "invalidation_conditions": [],
         }
     )
 
