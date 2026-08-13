@@ -71,7 +71,9 @@ def _dcf_result() -> object:
 
 def _report() -> CommitteeReport:
     evidence = _evidence()
-    thesis = InvestmentThesis(summary="Durable moat in EUV lithography", supporting_evidence=[evidence])
+    thesis = InvestmentThesis(
+        summary="Durable moat in EUV lithography", supporting_evidence=[evidence]
+    )
     assessment = AnalysisAssessment(
         assessment_id=uuid4(),
         conclusion="Thesis is well-supported.",

@@ -92,7 +92,7 @@ assumptions = DCFAssumptions(
         ForecastYear(
             year=3,
             revenue=Money(amount=Decimal(1300), currency=EUR),
-            depreciation_and_amortization=print("DCF result:          OK")Money(amount=Decimal(60), currency=EUR),
+            depreciation_and_amortization=Money(amount=Decimal(60), currency=EUR),
             capital_expenditure=Money(amount=Decimal(70), currency=EUR),
             change_in_net_working_capital=Money(amount=Decimal(25), currency=EUR),
         ),
@@ -129,7 +129,6 @@ print("DCF result:          OK")
 print()
 
 # This requires the configured OpenAI provider/API key.
-# This requires the configured OpenAI provider/API key.
 api_key = os.environ["OPENAI_API_KEY"]
 provider = OpenAIProvider(api_key=api_key)
 
@@ -146,4 +145,4 @@ print("=" * 70)
 print("FINAL THESIS DOCUMENT")
 print("=" * 70)
 print(document)
-print("=" * 70) 
+print("=" * 70)

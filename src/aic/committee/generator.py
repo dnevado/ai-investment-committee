@@ -26,7 +26,9 @@ def generate_decision(
 ) -> CommitteeDecision:
     system_prompt, user_prompt = build_prompt(context)
     completion = provider.complete_structured(
-        system_prompt=system_prompt, user_prompt=user_prompt, schema=CommitteeDecisionDraft
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+        schema=CommitteeDecisionDraft,
     )
     logger.info(
         "committee decision adjudicated",
@@ -39,7 +41,9 @@ def generate_decision(
 
     draft = CommitteeDecisionDraft.model_validate(completion.content)
 
-    known_evidence_ids = {evidence.evidence_id for evidence in context.investment_case.evidence}
+    known_evidence_ids = {
+        evidence.evidence_id for evidence in context.investment_case.evidence
+    }
     for evidence_id in draft.supporting_evidence_ids:
         if evidence_id not in known_evidence_ids:
             raise ValueError(f"LLM referenced unknown evidence_id: {evidence_id}")

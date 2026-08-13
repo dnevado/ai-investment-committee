@@ -69,7 +69,9 @@ def _dcf_result() -> object:
     return compute_dcf(assumptions)
 
 
-def _report(evidence: list[Evidence], dissent: list[str] | None = None) -> CommitteeReport:
+def _report(
+    evidence: list[Evidence], dissent: list[str] | None = None
+) -> CommitteeReport:
     thesis = InvestmentThesis(
         summary="Durable moat in EUV lithography",
         supporting_evidence=evidence,

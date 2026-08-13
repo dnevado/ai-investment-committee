@@ -12,7 +12,9 @@ _CENTS = Decimal("0.01")
 def _round_money(amount: Decimal, currency: str) -> Money:
     if not amount.is_finite():
         raise ValueError(f"Computed value is not finite: {amount}")
-    return Money(amount=amount.quantize(_CENTS, rounding=ROUND_HALF_UP), currency=currency)
+    return Money(
+        amount=amount.quantize(_CENTS, rounding=ROUND_HALF_UP), currency=currency
+    )
 
 
 def compute_dcf(assumptions: DCFAssumptions) -> DCFResult:

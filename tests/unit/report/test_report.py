@@ -94,7 +94,9 @@ def _assessment(evidence: Evidence) -> AnalysisAssessment:
     )
 
 
-def _decision(thesis: InvestmentThesis, dissent: list[str] | None = None) -> CommitteeDecision:
+def _decision(
+    thesis: InvestmentThesis, dissent: list[str] | None = None
+) -> CommitteeDecision:
     return CommitteeDecision(
         decision_id=uuid4(),
         recommendation=Recommendation.WATCH,
@@ -132,7 +134,14 @@ def test_valid_construction_preserves_all_composed_values() -> None:
 
 @pytest.mark.parametrize(
     "missing_field",
-    ["company", "financial_snapshots", "thesis", "dcf_result", "assessment", "decision"],
+    [
+        "company",
+        "financial_snapshots",
+        "thesis",
+        "dcf_result",
+        "assessment",
+        "decision",
+    ],
 )
 def test_required_field_validation(missing_field: str) -> None:
     kwargs = _full_kwargs()
@@ -154,7 +163,9 @@ def test_preserves_dissent_when_present() -> None:
     kwargs = _full_kwargs()
     thesis = kwargs["thesis"]
     assert isinstance(thesis, InvestmentThesis)
-    kwargs["decision"] = _decision(thesis, dissent=["Bear case underweights export risk."])
+    kwargs["decision"] = _decision(
+        thesis, dissent=["Bear case underweights export risk."]
+    )
 
     report = CommitteeReport(**kwargs)
 

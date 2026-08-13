@@ -9,7 +9,9 @@ from aic.research.provider import LLMProvider
 logger = logging.getLogger(__name__)
 
 
-def generate_thesis(context: ResearchContext, provider: LLMProvider) -> InvestmentThesis:
+def generate_thesis(
+    context: ResearchContext, provider: LLMProvider
+) -> InvestmentThesis:
     system_prompt, user_prompt = build_prompt(context)
     completion = provider.complete_structured(
         system_prompt=system_prompt, user_prompt=user_prompt, schema=ThesisDraft

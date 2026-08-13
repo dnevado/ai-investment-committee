@@ -227,8 +227,7 @@ The domain must be independent from external frameworks.
 Example:
 
 ```python
-class FinancialDataProvider(Protocol):
-    ...
+class FinancialDataProvider(Protocol): ...
 ```
 
 is acceptable.
@@ -760,11 +759,7 @@ External dependencies should be injected.
 Example:
 
 ```python
-AnalysisService(
-    data_provider=...,
-    llm_provider=...,
-    repository=...
-)
+AnalysisService(data_provider=..., llm_provider=..., repository=...)
 ```
 
 This enables testing with mocks/fakes.

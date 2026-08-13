@@ -62,7 +62,9 @@ def _dcf_result() -> object:
 
 
 def _assessment() -> AnalysisAssessment:
-    return AnalysisAssessment(assessment_id=uuid4(), conclusion="Assessment.", confidence=0.5)
+    return AnalysisAssessment(
+        assessment_id=uuid4(), conclusion="Assessment.", confidence=0.5
+    )
 
 
 def test_context_holds_all_four_composed_inputs() -> None:
@@ -72,7 +74,10 @@ def test_context_holds_all_four_composed_inputs() -> None:
     bear = _assessment()
 
     context = CommitteeAdjudicationContext(
-        investment_case=case, dcf_result=dcf_result, bull_assessment=bull, bear_assessment=bear
+        investment_case=case,
+        dcf_result=dcf_result,
+        bull_assessment=bull,
+        bear_assessment=bear,
     )
 
     assert context.investment_case == case
@@ -82,7 +87,8 @@ def test_context_holds_all_four_composed_inputs() -> None:
 
 
 @pytest.mark.parametrize(
-    "missing_field", ["investment_case", "dcf_result", "bull_assessment", "bear_assessment"]
+    "missing_field",
+    ["investment_case", "dcf_result", "bull_assessment", "bear_assessment"],
 )
 def test_context_requires_all_fields(missing_field: str) -> None:
     kwargs = {

@@ -34,9 +34,13 @@ class DCFAssumptions(BaseModel):
     @model_validator(mode="after")
     def _check_consistent_currency(self) -> "DCFAssumptions":
         currencies = {item.revenue.currency for item in self.forecast}
-        currencies |= {item.depreciation_and_amortization.currency for item in self.forecast}
+        currencies |= {
+            item.depreciation_and_amortization.currency for item in self.forecast
+        }
         currencies |= {item.capital_expenditure.currency for item in self.forecast}
-        currencies |= {item.change_in_net_working_capital.currency for item in self.forecast}
+        currencies |= {
+            item.change_in_net_working_capital.currency for item in self.forecast
+        }
         currencies.add(self.cash.currency)
         currencies.add(self.debt.currency)
         if len(currencies) > 1:

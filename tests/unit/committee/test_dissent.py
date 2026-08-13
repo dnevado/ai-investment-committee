@@ -40,7 +40,9 @@ def _context() -> CommitteeAdjudicationContext:
         as_of=date(2026, 3, 31),
         revenue=Money(amount=Decimal(6500000000), currency="EUR"),
     )
-    thesis = InvestmentThesis(summary="Durable moat in EUV lithography", supporting_evidence=[evidence])
+    thesis = InvestmentThesis(
+        summary="Durable moat in EUV lithography", supporting_evidence=[evidence]
+    )
     case = InvestmentCase(
         case_id=uuid4(),
         company=company,
@@ -68,13 +70,22 @@ def _context() -> CommitteeAdjudicationContext:
     )
     dcf_result = compute_dcf(assumptions)
     bull = AnalysisAssessment(
-        assessment_id=uuid4(), conclusion="Bull case.", confidence=0.8, supporting_evidence=[evidence.evidence_id]
+        assessment_id=uuid4(),
+        conclusion="Bull case.",
+        confidence=0.8,
+        supporting_evidence=[evidence.evidence_id],
     )
     bear = AnalysisAssessment(
-        assessment_id=uuid4(), conclusion="Bear case.", confidence=0.3, supporting_evidence=[evidence.evidence_id]
+        assessment_id=uuid4(),
+        conclusion="Bear case.",
+        confidence=0.3,
+        supporting_evidence=[evidence.evidence_id],
     )
     return CommitteeAdjudicationContext(
-        investment_case=case, dcf_result=dcf_result, bull_assessment=bull, bear_assessment=bear
+        investment_case=case,
+        dcf_result=dcf_result,
+        bull_assessment=bull,
+        bear_assessment=bear,
     )
 
 
@@ -95,7 +106,9 @@ def _draft_content(*, dissent: list[str]) -> dict:
 def test_dissent_is_preserved_when_present() -> None:
     context = _context()
     provider = FakeLLMProvider(
-        content=_draft_content(dissent=["Bear case underweights structural EUV demand."])
+        content=_draft_content(
+            dissent=["Bear case underweights structural EUV demand."]
+        )
     )
 
     decision = generate_decision(context, provider)

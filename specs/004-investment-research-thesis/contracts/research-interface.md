@@ -40,7 +40,9 @@ class LLMProvider(Protocol):
 ## `generate_thesis` contract
 
 ```python
-def generate_thesis(context: ResearchContext, provider: LLMProvider) -> InvestmentThesis: ...
+def generate_thesis(
+    context: ResearchContext, provider: LLMProvider
+) -> InvestmentThesis: ...
 ```
 
 - MUST validate the provider's raw response against `ThesisDraft` before further

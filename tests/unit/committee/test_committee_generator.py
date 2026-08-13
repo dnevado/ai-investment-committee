@@ -45,7 +45,9 @@ def _context(evidence: list[Evidence]) -> CommitteeAdjudicationContext:
         as_of=date(2026, 3, 31),
         revenue=Money(amount=Decimal(6500000000), currency="EUR"),
     )
-    thesis = InvestmentThesis(summary="Durable moat in EUV lithography", supporting_evidence=evidence)
+    thesis = InvestmentThesis(
+        summary="Durable moat in EUV lithography", supporting_evidence=evidence
+    )
     case = InvestmentCase(
         case_id=uuid4(),
         company=company,
@@ -85,14 +87,19 @@ def _context(evidence: list[Evidence]) -> CommitteeAdjudicationContext:
         supporting_evidence=[item.evidence_id for item in evidence],
     )
     return CommitteeAdjudicationContext(
-        investment_case=case, dcf_result=dcf_result, bull_assessment=bull, bear_assessment=bear
+        investment_case=case,
+        dcf_result=dcf_result,
+        bull_assessment=bull,
+        bear_assessment=bear,
     )
 
 
 def _valid_draft_content(evidence_ids: list[str]) -> dict:
     return {
         "central_thesis": "ASML holds a durable moat in EUV lithography.",
-        "key_disagreements": ["Bull weighs demand durability higher than Bear weighs export risk."],
+        "key_disagreements": [
+            "Bull weighs demand durability higher than Bear weighs export risk."
+        ],
         "valuation_summary": "DCF implies upside versus current levels.",
         "downside_risks": ["Export restrictions"],
         "invalidation_conditions": ["Major customer cancels multi-year order"],
@@ -103,7 +110,9 @@ def _valid_draft_content(evidence_ids: list[str]) -> dict:
     }
 
 
-def test_generate_decision_with_valid_draft_resolves_evidence_and_composes_rationale() -> None:
+def test_generate_decision_with_valid_draft_resolves_evidence_and_composes_rationale() -> (
+    None
+):
     evidence = _evidence()
     context = _context([evidence])
     provider = FakeLLMProvider(
@@ -121,7 +130,10 @@ def test_generate_decision_with_valid_draft_resolves_evidence_and_composes_ratio
     assert decision.dissent == ["Bear case underweights structural demand."]
     assert decision.valuation_reference is None
     assert "ASML holds a durable moat in EUV lithography." in decision.rationale
-    assert "Bull weighs demand durability higher than Bear weighs export risk." in decision.rationale
+    assert (
+        "Bull weighs demand durability higher than Bear weighs export risk."
+        in decision.rationale
+    )
     assert "DCF implies upside versus current levels." in decision.rationale
     assert "Export restrictions" in decision.rationale
     assert "Major customer cancels multi-year order" in decision.rationale
@@ -154,7 +166,9 @@ def test_generate_decision_rejects_recommendation_outside_enum() -> None:
         generate_decision(context, provider)
 
 
-def test_generate_decision_propagates_provider_error_without_fabricating_decision() -> None:
+def test_generate_decision_propagates_provider_error_without_fabricating_decision() -> (
+    None
+):
     context = _context([_evidence()])
     provider = FakeLLMProvider(error=TimeoutError("provider timed out"))
 

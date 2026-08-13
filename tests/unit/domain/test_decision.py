@@ -29,7 +29,9 @@ def test_valid_construction_with_valuation_reference() -> None:
     assert decision.valuation_reference is not None
 
 
-@pytest.mark.parametrize("missing_field", ["decision_id", "recommendation", "rationale"])
+@pytest.mark.parametrize(
+    "missing_field", ["decision_id", "recommendation", "rationale"]
+)
 def test_required_field_validation(missing_field: str) -> None:
     kwargs = _valid_kwargs()
     del kwargs[missing_field]
