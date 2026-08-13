@@ -1,8 +1,7 @@
-from datetime import date
+import os
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from uuid import uuid4
-import os
-from aic.research.openai_provider import OpenAIProvider
 
 from aic.dcf import DCFAssumptions, ForecastYear, compute_dcf
 from aic.domain import (
@@ -15,7 +14,7 @@ from aic.domain import (
     Money,
 )
 from aic.research import ResearchContext, generate_thesis, render_thesis_document
-
+from aic.research.openai_provider import OpenAIProvider
 
 EUR = "EUR"
 
@@ -35,7 +34,7 @@ evidence = [
         source="MVP validation",
         title="Revenue growth",
         excerpt="The company is expected to grow revenue during the forecast period.",
-        retrieved_date=date.today(),
+        retrieved_date=date.now(UTC).date(),
         evidence_type=EvidenceType.FACT,
     ),
     Evidence(
@@ -43,19 +42,19 @@ evidence = [
         source="MVP validation",
         title="DCF assumption",
         excerpt="The DCF uses a 10% WACC and 2% terminal growth rate.",
-        retrieved_date=date.today(),
+        retrieved_date=datetime.now(UTC).date(),
         evidence_type=EvidenceType.ASSUMPTION,
     ),
 ]
 
 snapshot = FinancialSnapshot(
-    as_of=date.today(),
-    revenue=Money(amount=Decimal("1000"), currency=EUR),
-    operating_income=Money(amount=Decimal("200"), currency=EUR),
-    net_income=Money(amount=Decimal("150"), currency=EUR),
-    free_cash_flow=Money(amount=Decimal("100"), currency=EUR),
-    cash=Money(amount=Decimal("100"), currency=EUR),
-    debt=Money(amount=Decimal("50"), currency=EUR),
+    as_of=datetime.now(UTC).date(),
+    revenue=Money(amount=Decimal(1000), currency=EUR),
+    operating_income=Money(amount=Decimal(200), currency=EUR),
+    net_income=Money(amount=Decimal(150), currency=EUR),
+    free_cash_flow=Money(amount=Decimal(100), currency=EUR),
+    cash=Money(amount=Decimal(100), currency=EUR),
+    debt=Money(amount=Decimal(50), currency=EUR),
 )
 
 thesis = InvestmentThesis(
@@ -78,33 +77,33 @@ assumptions = DCFAssumptions(
     forecast=[
         ForecastYear(
             year=1,
-            revenue=Money(amount=Decimal("1100"), currency=EUR),
-            depreciation_and_amortization=Money(amount=Decimal("50"), currency=EUR),
-            capital_expenditure=Money(amount=Decimal("60"), currency=EUR),
-            change_in_net_working_capital=Money(amount=Decimal("20"), currency=EUR),
+            revenue=Money(amount=Decimal(1100), currency=EUR),
+            depreciation_and_amortization=Money(amount=Decimal(50), currency=EUR),
+            capital_expenditure=Money(amount=Decimal(60), currency=EUR),
+            change_in_net_working_capital=Money(amount=Decimal(20), currency=EUR),
         ),
         ForecastYear(
             year=2,
-            revenue=Money(amount=Decimal("1200"), currency=EUR),
-            depreciation_and_amortization=Money(amount=Decimal("55"), currency=EUR),
-            capital_expenditure=Money(amount=Decimal("65"), currency=EUR),
-            change_in_net_working_capital=Money(amount=Decimal("20"), currency=EUR),
+            revenue=Money(amount=Decimal(1200), currency=EUR),
+            depreciation_and_amortization=Money(amount=Decimal(55), currency=EUR),
+            capital_expenditure=Money(amount=Decimal(65), currency=EUR),
+            change_in_net_working_capital=Money(amount=Decimal(20), currency=EUR),
         ),
         ForecastYear(
             year=3,
-            revenue=Money(amount=Decimal("1300"), currency=EUR),
-            depreciation_and_amortization=Money(amount=Decimal("60"), currency=EUR),
-            capital_expenditure=Money(amount=Decimal("70"), currency=EUR),
-            change_in_net_working_capital=Money(amount=Decimal("25"), currency=EUR),
+            revenue=Money(amount=Decimal(1300), currency=EUR),
+            depreciation_and_amortization=print("DCF result:          OK")Money(amount=Decimal(60), currency=EUR),
+            capital_expenditure=Money(amount=Decimal(70), currency=EUR),
+            change_in_net_working_capital=Money(amount=Decimal(25), currency=EUR),
         ),
     ],
     operating_margin=Decimal("0.20"),
     tax_rate=Decimal("0.25"),
     wacc=Decimal("0.10"),
     terminal_growth_rate=Decimal("0.02"),
-    cash=Money(amount=Decimal("100"), currency=EUR),
-    debt=Money(amount=Decimal("50"), currency=EUR),
-    shares_outstanding=Decimal("100"),
+    cash=Money(amount=Decimal(100), currency=EUR),
+    debt=Money(amount=Decimal(50), currency=EUR),
+    shares_outstanding=Decimal(100),
 )
 
 dcf_result = compute_dcf(assumptions)
@@ -126,7 +125,7 @@ context = ResearchContext(
 
 print("ResearchContext:     OK")
 print(f"Evidence supplied:   {len(evidence)}")
-print(f"DCF result:          OK")
+print("DCF result:          OK")
 print()
 
 # This requires the configured OpenAI provider/API key.
