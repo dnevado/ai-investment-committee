@@ -49,6 +49,15 @@ def compute_dcf(assumptions: DCFAssumptions) -> DCFResult:
     forecast_years = len(assumptions.forecast)
     fcff_final = unrounded_fcff[-1]
 
+    if fcff_final <= 0:
+        raise ValueError(
+            "DCF result rejected: terminal-year FCFF is not positive "
+            f"(got {fcff_final}). A perpetuity-growth terminal value is only "
+            "economically meaningful when computed from a sustaining, positive "
+            "cash flow base; adjust the forecast assumptions (e.g. capex, "
+            "operating margin) so the terminal year is cash-flow positive."
+        )
+
     terminal_value = (
         fcff_final
         * (one + assumptions.terminal_growth_rate)
@@ -57,6 +66,15 @@ def compute_dcf(assumptions: DCFAssumptions) -> DCFResult:
     pv_terminal_value = terminal_value / (one + assumptions.wacc) ** forecast_years
 
     enterprise_value = sum(unrounded_pv_fcff, Decimal(0)) + pv_terminal_value
+
+    if enterprise_value <= 0:
+        raise ValueError(
+            "DCF result rejected: enterprise value is not positive "
+            f"(got {enterprise_value}). This indicates an inconsistent "
+            "assumption set rather than a legitimate bearish valuation; "
+            "adjust the forecast assumptions and recompute."
+        )
+
     equity_value = enterprise_value + assumptions.cash.amount - assumptions.debt.amount
     implied_value_per_share = equity_value / assumptions.shares_outstanding
 

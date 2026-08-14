@@ -202,6 +202,43 @@ def test_invalid_dcf_assumptions_fail_before_any_llm_call() -> None:
         )
 
 
+def test_dcf_plausibility_failure_halts_before_any_llm_call() -> None:
+    forecast = [
+        ForecastYear(
+            revenue=Money(amount=Decimal(100), currency="EUR"),
+            depreciation_and_amortization=Money(amount=Decimal(0), currency="EUR"),
+            capital_expenditure=Money(amount=Decimal(50), currency="EUR"),
+            change_in_net_working_capital=Money(amount=Decimal(0), currency="EUR"),
+        )
+    ]
+    assumptions = DCFAssumptions(
+        forecast=forecast,
+        operating_margin=Decimal("0.10"),
+        tax_rate=Decimal(0),
+        wacc=Decimal("0.10"),
+        terminal_growth_rate=Decimal("0.02"),
+        cash=Money(amount=Decimal(0), currency="EUR"),
+        debt=Money(amount=Decimal(0), currency="EUR"),
+        shares_outstanding=Decimal(10),
+    )
+    workflow_input = WorkflowInput(
+        company=_company(),
+        financial_snapshots=[
+            FinancialSnapshot(
+                as_of=date(2026, 3, 31), revenue=Money(amount=Decimal(6500000000), currency="EUR")
+            )
+        ],
+        evidence=[],
+        dcf_assumptions=assumptions,
+    )
+    provider = FakeLLMProvider()
+
+    with pytest.raises(ValueError, match="terminal-year FCFF"):
+        run_investment_workflow(workflow_input, provider)
+
+    assert len(provider.calls) == 0
+
+
 def test_research_stage_failure_halts_before_any_later_stage() -> None:
     evidence = _evidence()
     workflow_input = _workflow_input([evidence])

@@ -133,7 +133,43 @@ def test_reference_case() -> None:
 
 
 def test_negative_fcff_year_is_allowed() -> None:
-    """A forecast year where capex exceeds NOPAT + D&A produces a negative FCFF (spec Edge Cases)."""
+    """An interim (non-terminal) year where capex exceeds NOPAT + D&A produces a negative
+    FCFF (spec Edge Cases). Only the terminal year is guarded (feature 010); an interim
+    dip followed by a positive terminal year remains allowed and unchanged."""
+    assumptions = DCFAssumptions(
+        forecast=[
+            ForecastYear(
+                revenue=_money("100"),
+                depreciation_and_amortization=_money("0"),
+                capital_expenditure=_money("50"),
+                change_in_net_working_capital=_money("0"),
+            ),
+            ForecastYear(
+                revenue=_money("100"),
+                depreciation_and_amortization=_money("0"),
+                capital_expenditure=_money("0"),
+                change_in_net_working_capital=_money("0"),
+            ),
+        ],
+        operating_margin=Decimal("0.10"),
+        tax_rate=Decimal(0),
+        wacc=Decimal("0.10"),
+        terminal_growth_rate=Decimal("0.02"),
+        cash=_money("0"),
+        debt=_money("0"),
+        shares_outstanding=Decimal(10),
+    )
+
+    result = compute_dcf(assumptions)
+
+    assert result.per_year[0].fcff.amount == Decimal("-40.00")
+    assert result.per_year[0].pv_fcff.amount < 0
+    assert result.per_year[1].fcff.amount == Decimal("10.00")
+    assert result.enterprise_value.amount > 0
+
+
+def test_rejects_non_positive_terminal_year_fcff() -> None:
+    """A single-year (hence terminal-year) forecast with negative FCFF is rejected (FR-001)."""
     assumptions = DCFAssumptions(
         forecast=[
             ForecastYear(
@@ -152,10 +188,123 @@ def test_negative_fcff_year_is_allowed() -> None:
         shares_outstanding=Decimal(10),
     )
 
-    result = compute_dcf(assumptions)
+    with pytest.raises(ValueError, match="terminal-year FCFF"):
+        compute_dcf(assumptions)
 
-    assert result.per_year[0].fcff.amount == Decimal("-40.00")
-    assert result.per_year[0].pv_fcff.amount < 0
+
+def test_rejects_zero_terminal_year_fcff() -> None:
+    """A terminal-year FCFF of exactly zero is rejected too (spec Edge Cases: "not strictly positive")."""
+    assumptions = DCFAssumptions(
+        forecast=[
+            ForecastYear(
+                revenue=_money("100"),
+                depreciation_and_amortization=_money("0"),
+                capital_expenditure=_money("10"),
+                change_in_net_working_capital=_money("0"),
+            )
+        ],
+        operating_margin=Decimal("0.10"),
+        tax_rate=Decimal(0),
+        wacc=Decimal("0.10"),
+        terminal_growth_rate=Decimal("0.02"),
+        cash=_money("0"),
+        debt=_money("0"),
+        shares_outstanding=Decimal(10),
+    )
+
+    with pytest.raises(ValueError, match="terminal-year FCFF"):
+        compute_dcf(assumptions)
+
+
+def test_rejects_non_positive_enterprise_value() -> None:
+    """A positive terminal-year FCFF can still be outweighed by a deeply negative interim
+    year, driving Enterprise Value non-positive; this is rejected independently (FR-002)."""
+    assumptions = DCFAssumptions(
+        forecast=[
+            ForecastYear(
+                revenue=_money("100"),
+                depreciation_and_amortization=_money("0"),
+                capital_expenditure=_money("10000"),
+                change_in_net_working_capital=_money("0"),
+            ),
+            ForecastYear(
+                revenue=_money("100"),
+                depreciation_and_amortization=_money("0"),
+                capital_expenditure=_money("0"),
+                change_in_net_working_capital=_money("0"),
+            ),
+        ],
+        operating_margin=Decimal("0.10"),
+        tax_rate=Decimal(0),
+        wacc=Decimal("0.10"),
+        terminal_growth_rate=Decimal("0.02"),
+        cash=_money("0"),
+        debt=_money("0"),
+        shares_outstanding=Decimal(10),
+    )
+
+    with pytest.raises(ValueError, match="enterprise value"):
+        compute_dcf(assumptions)
+
+
+def test_terminal_fcff_rejection_message_reports_offending_value() -> None:
+    """The rejection message alone must identify the failing check AND the offending
+    computed figure, so an analyst can diagnose it without reading engine source (US3;
+    FR-003, SC-003)."""
+    assumptions = DCFAssumptions(
+        forecast=[
+            ForecastYear(
+                revenue=_money("100"),
+                depreciation_and_amortization=_money("0"),
+                capital_expenditure=_money("50"),
+                change_in_net_working_capital=_money("0"),
+            )
+        ],
+        operating_margin=Decimal("0.10"),
+        tax_rate=Decimal(0),
+        wacc=Decimal("0.10"),
+        terminal_growth_rate=Decimal("0.02"),
+        cash=_money("0"),
+        debt=_money("0"),
+        shares_outstanding=Decimal(10),
+    )
+
+    with pytest.raises(ValueError, match="terminal-year FCFF") as exc_info:
+        compute_dcf(assumptions)
+
+    assert "-40" in str(exc_info.value)
+
+
+def test_enterprise_value_rejection_message_reports_offending_value() -> None:
+    """Same diagnosability guarantee for the enterprise-value check (US3; FR-003, SC-003)."""
+    assumptions = DCFAssumptions(
+        forecast=[
+            ForecastYear(
+                revenue=_money("100"),
+                depreciation_and_amortization=_money("0"),
+                capital_expenditure=_money("10000"),
+                change_in_net_working_capital=_money("0"),
+            ),
+            ForecastYear(
+                revenue=_money("100"),
+                depreciation_and_amortization=_money("0"),
+                capital_expenditure=_money("0"),
+                change_in_net_working_capital=_money("0"),
+            ),
+        ],
+        operating_margin=Decimal("0.10"),
+        tax_rate=Decimal(0),
+        wacc=Decimal("0.10"),
+        terminal_growth_rate=Decimal("0.02"),
+        cash=_money("0"),
+        debt=_money("0"),
+        shares_outstanding=Decimal(10),
+    )
+
+    with pytest.raises(ValueError, match="enterprise value") as exc_info:
+        compute_dcf(assumptions)
+
+    assert "-8968" in str(exc_info.value)
 
 
 def test_negative_equity_value_and_implied_value_per_share_are_allowed() -> None:

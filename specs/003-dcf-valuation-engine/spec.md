@@ -106,7 +106,11 @@ precision).
   that same year's FCFF — the formulas apply unchanged with N = 1.
 - What happens when a forecast year's FCFF is negative (e.g., capital expenditure exceeds NOPAT
   plus D&A)? This is allowed and not an error — it simply contributes a negative present value to
-  Enterprise Value, reflecting a real (if unusual) business situation.
+  Enterprise Value, reflecting a real (if unusual) business situation. **Amended by feature
+  010 (`specs/010-valuation-plausibility-guard/spec.md`)**: this only holds for an *interim*
+  (non-terminal) forecast year. A non-positive FCFF in the *terminal* forecast year — the
+  year that anchors the perpetuity-growth terminal value — is rejected as an error, because a
+  non-positive sustaining cash flow makes the terminal value economically meaningless.
 - What happens when Debt exceeds Enterprise Value plus Cash, producing a negative Equity Value or
   a negative Implied Value Per Share? This is allowed and not an error — it is a valid (if
   alarming) output reflecting the supplied assumptions, not a condition this feature treats as
