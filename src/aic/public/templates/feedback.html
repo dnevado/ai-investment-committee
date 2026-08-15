@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Share your feedback — Quorum{% endblock %}
+{% block content %}
+
+<div class="form-page">
+  <span class="label-s">Feedback</span>
+  <h1 class="headline-l">Share your feedback</h1>
+  <p class="body-m">You don't need to have registered — any answer helps us learn. Answer as many as you like.</p>
+
+  {% if error %}
+  <p class="form-error" role="alert">{{ error }}</p>
+  {% endif %}
+
+  <form method="post" action="/feedback" class="form">
+    <label for="intended_use">What would you use Quorum for?</label>
+    <textarea id="intended_use" name="intended_use" rows="2"></textarea>
+
+    <label for="most_valuable_part">What part of the analysis is most valuable?</label>
+    <textarea id="most_valuable_part" name="most_valuable_part" rows="2"></textarea>
+
+    <label for="trust_blockers">What would prevent you from trusting the output?</label>
+    <textarea id="trust_blockers" name="trust_blockers" rows="2"></textarea>
+
+    <label for="regular_use">Would you use this regularly?</label>
+    <textarea id="regular_use" name="regular_use" rows="2"></textarea>
+
+    <label for="willing_to_pay">Would you pay for it?</label>
+    <textarea id="willing_to_pay" name="willing_to_pay" rows="2"></textarea>
+
+    <label for="pre_conditions">What would you expect before using it for a real investment decision?</label>
+    <textarea id="pre_conditions" name="pre_conditions" rows="2"></textarea>
+
+    <label for="email">Email <span class="optional">(optional, if you'd like a reply)</span></label>
+    <input type="email" id="email" name="email">
+
+    <button type="submit" class="btn btn-filled">Submit feedback</button>
+  </form>
+</div>
+
+{% endblock %}

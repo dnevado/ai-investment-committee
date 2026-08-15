@@ -1,0 +1,124 @@
+{
+  "company_name": "Amazon.com, Inc.",
+  "ticker": "AMZN",
+  "implied_value_per_share": "$75.07",
+  "enterprise_value": "$843.19B",
+  "equity_value": "$813.23B",
+  "recommendation": "WATCH",
+  "conviction": 0.82,
+  "thesis_summary": "Amazon.com, Inc. showcases robust revenue growth and substantial operating income, driven by its diverse business segments including e-commerce and cloud services. With a large cash reserve relative to its debt, the company remains financially adaptable despite increased capital expenditures aimed at infrastructure enhancements, particularly in AI technologies. The business operates with a compelling operating margin and strong earnings growth, supported by a favorable long-term outlook on revenue driven by its AWS and advertising divisions.",
+  "bull_summary": "The strongest upside case for Amazon centers around accelerated growth in its AWS and advertising segments, combined with enhanced operational efficiencies that could lift operating margins beyond current assumptions.",
+  "bear_summary": "The investment thesis appears overly optimistic, particularly regarding revenue stability and operating margins, making Amazon vulnerable to a downturn.",
+  "key_assumptions": [
+    "Revenue growth will moderate to approximately 11% annually as per analyst estimates, particularly benefiting from AWS and advertising growth (evidence_id=9ca6b52a-2487-4015-b361-da1c5790b746).",
+    "An operating margin of 12% is assumed over the forecast horizon, aligning with anticipated performance underpinned by AWS expansion (evidence_id=e9d85ddc-3b10-496e-b124-5b0f6f2b2cbc).",
+    "The weighted average cost of capital (WACC) is assumed at 9.0%, reflecting a conservative estimate amid varying sources (evidence_id=c71a28aa-6733-40bb-b04d-1721882a3993).",
+    "A terminal growth rate of 3% is anticipated for the DCF model, consistent with long-run nominal GDP growth assumptions (evidence_id=189b41f8-d2e4-44b1-a1b2-e5a8fa3f1c93)."
+  ],
+  "key_risks": [
+    "Significant increases in capital expenditures could adversely affect free cash flow and profitability unless matched by revenues (evidence_id=439955dd-adb3-4839-8a1d-307cc6cd6294).",
+    "Dependence on growth in the AWS segment and advertising revenues introduces vulnerability to sector-specific downturns (evidence_id=9ca6b52a-2487-4015-b361-da1c5790b746).",
+    "A high total debt level of approximately $152.99 billion could limit financial flexibility and exacerbate risks if cash flow constrains (evidence_id=f2f0be85-024e-452b-8df8-072e1cbda244)."
+  ],
+  "evidence": [
+    {
+      "title": "FY2025 cash, cash equivalents, and marketable securities",
+      "excerpt": "Cash, cash equivalents, and marketable securities totaled $123.0 billion as of December 31, 2025 ($86,810 million in cash and cash equivalents plus $36,219 million in short-term investments), compared with $101.2 billion as of December 31, 2024.",
+      "classification": "Reported fact",
+      "source": "Amazon.com, Inc. Form 10-K, fiscal year ended December 31, 2025",
+      "reference": "https://www.stockanalysis.com/stocks/amzn/financials/balance-sheet/"
+    },
+    {
+      "title": "FY2025 net sales (revenue)",
+      "excerpt": "Revenue increased 12% to $716.9 billion in 2025, compared with $638.0 billion in 2024.",
+      "classification": "Reported fact",
+      "source": "Amazon.com, Inc. Form 10-K, fiscal year ended December 31, 2025",
+      "reference": "https://www.sec.gov/Archives/edgar/data/1018724/000101872426000004/amzn-20251231.htm"
+    },
+    {
+      "title": "WACC assumption",
+      "excerpt": "Published WACC estimates for Amazon vary by source and methodology: approximately 7.62% (AlphaSpread), 8.2% (ValueInvesting.io), and 13.13% (GuruFocus). This model assumes a 9.0% WACC, a value within the lower-to-middle portion of the cited range.",
+      "classification": "Forecast assumption",
+      "source": "Third-party WACC estimates (aggregated), retrieved 2026",
+      "reference": "https://www.alphaspread.com/security/nasdaq/amzn/discount-rate"
+    },
+    {
+      "title": "Terminal growth rate assumption",
+      "excerpt": "A 3.0% terminal growth rate is assumed, consistent with the standard convention of anchoring perpetuity growth close to long-run nominal GDP growth rather than a company-specific estimate.",
+      "classification": "Forecast assumption",
+      "source": "Standard DCF modeling convention",
+      "reference": null
+    },
+    {
+      "title": "FY2025 capital expenditures",
+      "excerpt": "Purchases of property and equipment were $131,819 million in FY2025 (approximately 18.4% of revenue), compared with $82,999 million in FY2024. Amazon has since guided 2026 capital expenditures higher, to roughly $220 billion, citing higher infrastructure and memory costs. This ratio reflects a specific, disclosed, temporarily elevated AI-infrastructure buildout cycle, not a steady-state capital intensity; Amazon's pre-surge capex/revenue ratio ran closer to 10-13% in prior years. This model's forecast therefore fades the capex/revenue ratio down from 15% (Y1) to 12% (Y2) to 10% (Y3) rather than holding the elevated FY2025 ratio flat, consistent with standard DCF practice for a company in an identified, disclosed investment cycle.",
+      "classification": "Reported fact",
+      "source": "Amazon FY2025 cash flow statement (aggregated from Form 10-K)",
+      "reference": "https://www.cnbc.com/2026/07/30/amazon-amzn-q2-earnings-report-2026.html"
+    },
+    {
+      "title": "FY2025 effective tax rate",
+      "excerpt": "Amazon's effective tax rate increased to 19.7% in 2025, with a $19.1 billion income tax provision recorded for the year.",
+      "classification": "Reported fact",
+      "source": "Amazon.com, Inc. Form 10-K, fiscal year ended December 31, 2025",
+      "reference": "https://www.sec.gov/Archives/edgar/data/1018724/000101872426000004/amzn-20251231.htm"
+    },
+    {
+      "title": "FY2025 net income",
+      "excerpt": "Net income was $77,670 million, up from $59,248 million in the prior year. Diluted earnings per share rose to $7.17 from $5.53.",
+      "classification": "Reported fact",
+      "source": "Amazon.com, Inc. Form 10-K / Q4 2025 earnings release",
+      "reference": "https://www.sec.gov/Archives/edgar/data/1018724/000101872426000002/amzn-20251231xex991.htm"
+    },
+    {
+      "title": "Forecast operating margin assumption",
+      "excerpt": "FY2025 actual operating margin was approximately 11.2% ($79,975M / $716,924M). Some analyst scenarios cite roughly 15% operating margins as an achievable longer-term case on continued AWS/advertising mix shift. This model assumes a moderate 12.0% operating margin across the forecast horizon, applied uniformly to every forecast year per this project's DCF engine convention.",
+      "classification": "Forecast assumption",
+      "source": "Sell-side analyst commentary (aggregated), retrieved 2026",
+      "reference": "https://www.tikr.com/blog/amazon-stock-prediction-where-analysts-see-the-stock-going-by-2027"
+    },
+    {
+      "title": "FY2025 free cash flow",
+      "excerpt": "Free cash flow is calculated as cash provided by operating activities ($139,514 million) less purchases of property and equipment ($131,819 million), or approximately $7,695 million for FY2025 (down from $32,878 million in FY2024, reflecting a sharp increase in capital expenditures).",
+      "classification": "Calculation",
+      "source": "Amazon FY2025 cash flow statement (aggregated from Form 10-K)",
+      "reference": "https://www.stockanalysis.com/stocks/amzn/financials/cash-flow-statement/"
+    },
+    {
+      "title": "FY2025 depreciation and amortization",
+      "excerpt": "Depreciation and amortization expense was $65,756 million in FY2025, compared with $52,795 million in FY2024.",
+      "classification": "Reported fact",
+      "source": "Amazon FY2025 cash flow statement (aggregated from Form 10-K)",
+      "reference": "https://www.stockanalysis.com/stocks/amzn/financials/cash-flow-statement/"
+    },
+    {
+      "title": "Forecast revenue growth assumption",
+      "excerpt": "Analyst estimates for Amazon's forward revenue growth cluster around 10.5%-14% annually through 2027-2028, driven particularly by AWS and advertising growth. This model assumes a moderate, fading growth path of 11% / 10% / 9% for Y1/Y2/Y3, within but below the more bullish end of the cited analyst range.",
+      "classification": "Forecast assumption",
+      "source": "Sell-side analyst commentary (aggregated), retrieved 2026",
+      "reference": "https://www.tikr.com/blog/amazon-stock-prediction-where-analysts-see-the-stock-going-by-2027"
+    },
+    {
+      "title": "FY2025 diluted weighted-average shares outstanding",
+      "excerpt": "Diluted weighted-average shares outstanding were approximately 10,833 million, derived from FY2025 net income of $77,670 million divided by diluted EPS of $7.17. Separately, total shares outstanding plus outstanding stock awards were reported at approximately 11.0 billion as of December 31, 2025.",
+      "classification": "Calculation",
+      "source": "Amazon.com, Inc. Form 10-K / Q4 2025 earnings release",
+      "reference": "https://www.sec.gov/Archives/edgar/data/1018724/000101872426000002/amzn-20251231xex991.htm"
+    },
+    {
+      "title": "FY2025 total debt",
+      "excerpt": "Total debt (long-term debt plus long-term lease liabilities and other borrowings) was $152,987 million as of December 31, 2025, compared with $130,900 million as of December 31, 2024.",
+      "classification": "Reported fact",
+      "source": "Amazon FY2025 balance sheet (aggregated from Form 10-K)",
+      "reference": "https://www.stockanalysis.com/stocks/amzn/financials/balance-sheet/"
+    },
+    {
+      "title": "FY2025 operating income",
+      "excerpt": "Operating income was $79,975 million in FY2025, compared with $68,593 million in FY2024.",
+      "classification": "Reported fact",
+      "source": "Amazon.com, Inc. Form 10-K, fiscal year ended December 31, 2025",
+      "reference": "https://www.sec.gov/Archives/edgar/data/1018724/000101872426000004/amzn-20251231.htm"
+    }
+  ],
+  "captured_at": "2026-08-15"
+}

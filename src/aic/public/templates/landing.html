@@ -1,0 +1,324 @@
+{% extends "base.html" %}
+{% block title %}Quorum — Evidence-Backed Investment Research{% endblock %}
+{% block content %}
+
+<section class="hero hero--split">
+  <div class="hero-grid shell reveal">
+    <div class="hero-copy">
+      <span class="label-s">Quorum</span>
+      <h1 class="hero-headline">
+        <span class="t1">Research the case.</span>
+        <span class="t2">Challenge the thesis.</span>
+        <span class="t1">Make the decision.</span>
+      </h1>
+      <p class="hero-lede">
+        Evidence-backed investment research that turns public company data
+        into a case you can actually challenge.
+      </p>
+      <div class="cta-row">
+        <a class="btn btn-filled" href="/register" data-track="hero_cta_click">Get early access &rarr;</a>
+      </div>
+      <p class="cta-note">Limited early validation &middot; Built for fundamental investors</p>
+    </div>
+
+    <div class="hero-artifact-wrap">
+      <div class="hero-artifact">
+        <div class="hero-artifact-header">
+          <p class="hero-artifact-company">{{ presentation.company_name.upper() }} &middot; {{ presentation.ticker }}</p>
+          <p class="hero-artifact-label">Quorum Investment Case</p>
+        </div>
+
+        <div class="hero-artifact-row">
+          <span class="hero-artifact-status{% if presentation.recommendation == 'WATCH' %} hero-artifact-status--watch{% elif presentation.recommendation == 'BUY' %} hero-artifact-status--buy{% elif presentation.recommendation == 'AVOID' %} hero-artifact-status--avoid{% endif %}">{{ presentation.recommendation }}</span>
+          <span class="hero-artifact-conviction">{{ presentation.conviction }} <span>Conviction</span></span>
+        </div>
+
+        <div class="hero-artifact-value">
+          <p class="hero-artifact-value-figure">{{ presentation.implied_value_per_share }}</p>
+          <p class="hero-artifact-value-label">Model-implied value / share</p>
+        </div>
+
+        <div class="hero-artifact-section">
+          <p class="hero-artifact-kicker">Thesis</p>
+          <p class="hero-artifact-text">Growth remains strong, but infrastructure investment pressures free cash flow.</p>
+        </div>
+
+        <div class="hero-artifact-split">
+          <div class="hero-artifact-col bull">
+            <p class="hero-artifact-kicker">Bull</p>
+            <p class="hero-artifact-text-sm">AWS + advertising / margin expansion</p>
+          </div>
+          <div class="hero-artifact-col bear">
+            <p class="hero-artifact-kicker">Bear</p>
+            <p class="hero-artifact-text-sm">Capex pressure / FCF remains constrained</p>
+          </div>
+        </div>
+
+        <p class="hero-artifact-footer">{{ presentation.evidence|length }} evidence-linked claims</p>
+      </div>
+      <a class="hero-artifact-link" href="#example" data-track="demo_view">See the full case &darr;</a>
+    </div>
+  </div>
+</section>
+
+<section class="section-center">
+  <div class="shell problem-statement reveal">
+    <p class="line-1">AI gives you answers.</p>
+    <p class="line-2">Quorum gives you a case.</p>
+    <div class="token-row">
+      <span class="token">Evidence</span>
+      <span class="token-arrow">&rarr;</span>
+      <span class="token">Thesis</span>
+      <span class="token-arrow">&rarr;</span>
+      <span class="token-split">
+        <span class="token-half bull">Bull</span>
+        <span class="token-split-connector">&harr;</span>
+        <span class="token-half bear">Bear</span>
+      </span>
+      <span class="token-arrow">&rarr;</span>
+      <span class="token">Valuation</span>
+      <span class="token-arrow">&rarr;</span>
+      <span class="token">Decision</span>
+    </div>
+  </div>
+</section>
+
+<section class="section-alt">
+  <div class="shell">
+    <div class="section-header">
+      <span class="label-s">The Quorum difference</span>
+    </div>
+    <div class="difference-list reveal">
+      <div class="difference-item">
+        <span class="num">01</span>
+        <div>
+          <h3>Evidence</h3>
+          <p>Every material claim traces to a labeled, checkable source — fact, calculation, or assumption.</p>
+        </div>
+      </div>
+      <div class="difference-item">
+        <span class="num">02</span>
+        <div>
+          <h3>Adversarial cases</h3>
+          <p>An independent bull case and bear case, each built to win — not softened into a compromise.</p>
+        </div>
+      </div>
+      <div class="difference-item">
+        <span class="num">03</span>
+        <div>
+          <h3>Deterministic valuation</h3>
+          <p>Enterprise value, equity value, and price per share computed in code — never guessed by the model.</p>
+        </div>
+      </div>
+      <div class="difference-item">
+        <span class="num">04</span>
+        <div>
+          <h3>Committee decision</h3>
+          <p>A recommendation and conviction score, weighing the evidence and the disagreement between bull and bear.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how-it-works">
+  <div class="shell">
+    <div class="section-header">
+      <span class="label-s">How it works</span>
+      <h2 class="headline-l">Data becomes a case, step by step</h2>
+    </div>
+    <div class="pipeline reveal">
+      <div class="step"><span class="step-num">01</span>Data</div>
+      <div class="step-arrow">&rarr;</div>
+      <div class="step"><span class="step-num">02</span>Research</div>
+      <div class="step-arrow">&rarr;</div>
+      <div class="step"><span class="step-num">03</span>Thesis</div>
+      <div class="step-arrow">&rarr;</div>
+      <div class="step-split">
+        <div class="split-half bull">04 &middot; Bull</div>
+        <div class="split-half bear">04 &middot; Bear</div>
+      </div>
+      <div class="step-arrow">&rarr;</div>
+      <div class="step step--tonal"><span class="step-num">05</span>Deterministic DCF</div>
+      <div class="step-arrow">&rarr;</div>
+      <div class="step"><span class="step-num">06</span>Committee</div>
+      <div class="step-arrow">&rarr;</div>
+      <div class="step step--outcome"><span class="step-num">07</span>Investment Memo</div>
+    </div>
+    <p class="pipeline-note body-m">
+      Data is gathered with source metadata, synthesized into a researched
+      thesis, then argued from both sides — the strongest credible bull case
+      and the strongest credible bear case, each built to challenge the
+      other. A discounted cash flow valuation is computed deterministically
+      in code — never by the AI. The committee weighs the evidence, the
+      valuation, and the disagreement into a recommendation and conviction.
+    </p>
+  </div>
+</section>
+
+<section id="example" class="section-alt" data-track="demo_interaction">
+  <div class="shell">
+    <div class="validation-header">
+      <span class="label-s">Real-world validation</span>
+      <h2 class="headline-l">See a real Quorum investment case</h2>
+    </div>
+
+    <div id="case" class="investment-case-card reveal">
+      <div class="case-header">
+        <p class="case-company">{{ presentation.company_name.upper() }} &middot; {{ presentation.ticker }}</p>
+        <p class="case-label">Quorum Investment Case</p>
+      </div>
+
+      <div class="case-row">
+        <div class="case-metric{% if presentation.recommendation == 'WATCH' %} case-metric--watch{% elif presentation.recommendation == 'BUY' %} case-metric--buy{% elif presentation.recommendation == 'AVOID' %} case-metric--avoid{% endif %}">
+          <p class="case-metric-value">{{ presentation.recommendation }}</p>
+          <p class="case-metric-label">Decision</p>
+        </div>
+        <div class="case-metric">
+          <p class="case-metric-value">{{ presentation.conviction }}</p>
+          <p class="case-metric-label">Conviction</p>
+          <p class="case-metric-caption">Committee confidence in the case — not a price probability</p>
+        </div>
+      </div>
+
+      <div class="case-section">
+        <p class="case-section-label">Thesis</p>
+        <p class="case-thesis-text">
+          Amazon combines strong revenue and operating-income growth with
+          substantial investment in infrastructure. The key question is
+          whether future cash generation can justify that investment.
+        </p>
+      </div>
+
+      <div class="example-columns">
+        <div class="example-column bull">
+          <h3>Bull</h3>
+          <p>Growth &gt; base case — AWS + advertising</p>
+        </div>
+        <div class="example-column bear">
+          <h3>Bear</h3>
+          <p>Capex pressure — FCF remains constrained</p>
+        </div>
+      </div>
+
+      <div class="case-footer">
+        <div class="case-dcf-box">
+          <p class="case-dcf-kicker">DCF</p>
+          <p class="case-dcf-value">{{ presentation.implied_value_per_share }} / share</p>
+          <p class="case-dcf-label">Model-implied value</p>
+          <p class="case-dcf-assumptions">9% WACC &middot; 3% terminal growth &middot; 11% / 10% / 9% revenue growth</p>
+          <p class="case-dcf-note">Illustrative output from the Quorum valuation model — not a price prediction.</p>
+        </div>
+        <p class="case-evidence-count">{{ presentation.evidence|length }} evidence-linked claims</p>
+      </div>
+    </div>
+
+    <div class="hero-snapshot">
+      <hr class="rule">
+      <div class="figures">
+        <div class="figure">
+          <p class="value">{{ presentation.enterprise_value }}</p>
+          <p class="label">Enterprise value</p>
+        </div>
+        <div class="figure">
+          <p class="value">{{ presentation.equity_value }}</p>
+          <p class="label">Equity value</p>
+        </div>
+        <div class="figure">
+          <p class="value">{{ presentation.implied_value_per_share }}</p>
+          <p class="label">Value / share</p>
+        </div>
+      </div>
+      <hr class="rule">
+    </div>
+
+    {% include "_disclaimer.html" %}
+  </div>
+</section>
+
+<section id="differentiation">
+  <div class="shell">
+    <div class="section-header">
+      <span class="label-s">Not another AI stock picker</span>
+      <h2 class="headline-l">Quorum builds a case — and shows its work</h2>
+    </div>
+
+    <div class="card-grid">
+      <div class="card reveal">
+        <span class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18"/><path d="M5 7h14"/><path d="M5 7l-3 6a3 3 0 0 0 6 0z"/><path d="M19 7l-3 6a3 3 0 0 0 6 0z"/></svg>
+        </span>
+        <span class="card-kicker">Argued, not assumed</span>
+        <h3>A real bear case, not a disclaimer</h3>
+        <p>The bear case is built to invalidate the thesis, not soften it — generated independently of the bull case, arguing as hard as it can against the trade.</p>
+      </div>
+      <div class="card reveal">
+        <span class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="8 6 3 12 8 18"/><polyline points="16 6 21 12 16 18"/></svg>
+        </span>
+        <span class="card-kicker">Computed, not guessed</span>
+        <h3>Valuation runs in code, not in the model</h3>
+        <p>Enterprise value, equity value, and implied price per share come from a deterministic DCF engine. The AI proposes assumptions; Python does the arithmetic.</p>
+      </div>
+      <div class="card reveal">
+        <span class="card-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 15l6-6"/><path d="M11 6l1-1a4 4 0 0 1 6 6l-1 1"/><path d="M13 18l-1 1a4 4 0 0 1-6-6l1-1"/></svg>
+        </span>
+        <span class="card-kicker">Check it yourself</span>
+        <h3>Every claim traces to a source</h3>
+        <p>Facts, calculations, assumptions, and AI analysis are labeled separately, so you always know which is which — and can verify it independently.</p>
+      </div>
+    </div>
+
+    <div class="not-a">
+      <p class="no">"Ask AI whether you should buy a stock."</p>
+      <p class="yes">Quorum builds a case — thesis, bull, bear, valuation, decision — and shows its work.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section-alt">
+  <div class="shell">
+    <div class="section-header">
+      <span class="label-s">Evidence</span>
+      <h2 class="headline-l">Every material claim traces back to its source.</h2>
+    </div>
+    <div class="evidence-table-wrap reveal">
+      <table class="evidence-table">
+        <thead>
+          <tr><th>Type</th><th>Claim</th><th>Source</th></tr>
+        </thead>
+        <tbody>
+          {% set claims = {
+            "FY2025 net sales (revenue)": "FY2025 revenue +12%",
+            "FY2025 free cash flow": "FCF $7.7B",
+            "WACC assumption": "WACC 9%",
+            "Terminal growth rate assumption": "Terminal growth 3%"
+          } %}
+          {% for item in presentation.landing_sample_evidence %}
+          <tr>
+            <td class="ev-type">{{ item.classification }}</td>
+            <td class="ev-claim">{{ claims.get(item.title, item.title) }}</td>
+            <td class="ev-source">{{ item.source }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <a class="evidence-trail-link btn-text" href="/register">View the complete evidence trail &rarr;</a>
+  </div>
+</section>
+
+<section class="closing-cta section-alt">
+  <div class="shell">
+    <h2 class="headline-l">Think the case is wrong?</h2>
+    <p class="lede">Good. That's exactly what we're looking for.</p>
+    <p class="value-prop">
+      We're testing Quorum with fundamental investors who are willing to
+      challenge the thesis, the assumptions, and the valuation.
+    </p>
+    <a class="btn btn-filled" href="/register" data-track="final_cta_click">Challenge the case &rarr;</a>
+  </div>
+</section>
+
+{% endblock %}

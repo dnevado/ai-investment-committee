@@ -33,6 +33,11 @@ outputs/*
 !data/.gitkeep
 !outputs/.gitkeep
 
+# Public MVP validation (011): the captured Amazon snapshot is versioned static
+# content; the runtime SQLite registration/feedback/event store is not.
+!data/amazon_snapshot.json
+data/public.db
+
 # Editors / OS
 .vscode/
 .idea/

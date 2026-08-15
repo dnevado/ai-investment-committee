@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Get early access — Quorum{% endblock %}
+{% block content %}
+
+<div class="form-page">
+  <span class="label-s">Early access</span>
+  <h1 class="headline-l">Help us build better investment research.</h1>
+  <p class="body-m">
+    We're testing Quorum with a small group of fundamental investors. Tell us
+    how you currently research companies, what takes too long, and whether a
+    structured, evidence-backed investment case would actually improve your
+    process.
+  </p>
+
+  {% if error %}
+  <p class="form-error" role="alert">{{ error }}</p>
+  {% endif %}
+
+  <div class="form-card">
+    <h2 class="title-l">Join the Quorum validation group</h2>
+
+    <form method="post" action="/register" class="form">
+      <label for="email">Email <span class="required">(required)</span></label>
+      <input type="email" id="email" name="email" required>
+
+      <span class="radio-legend">What best describes you? <span class="optional">(optional)</span></span>
+      <div class="radio-group">
+        <label class="radio-option">
+          <input type="radio" name="role" value="individual investor">
+          Individual investor
+        </label>
+        <label class="radio-option">
+          <input type="radio" name="role" value="finance professional">
+          Professional investor
+        </label>
+        <label class="radio-option">
+          <input type="radio" name="role" value="analyst / researcher">
+          Analyst / researcher
+        </label>
+        <label class="radio-option">
+          <input type="radio" name="role" value="other">
+          Other
+        </label>
+      </div>
+
+      <button type="submit" class="btn btn-filled">Get early access &rarr;</button>
+    </form>
+  </div>
+
+  {% include "_disclaimer.html" %}
+</div>
+
+{% endblock %}

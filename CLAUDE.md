@@ -309,3 +309,70 @@ Iteration 11 Multi-company
 ```
 
 Do not skip directly to AWS or UI.
+
+# MVP public validation
+
+The MVP is now technically converged.
+
+Before major architectural rework, the next objective is to validate the product with the target audience.
+
+The public validation layer includes:
+
+- brand identity
+- public landing page
+- clear value proposition
+- primary CTA
+- simple user registration
+- controlled access to the MVP
+- analytics
+- user feedback
+- conversion measurement
+
+The public validation layer must not alter the investment-analysis domain.
+
+The landing page is a product-validation interface, not part of the investment engine.
+
+Do not introduce major backend or architectural changes solely to support the landing page.
+
+The purpose of this phase is to answer:
+
+> Do real target users understand the product, trust the proposition, and want to use the investment committee workflow?
+
+Success should be measured through observable user behavior rather than subjective opinions alone.
+
+# Public product identity
+
+The public product brand is:
+
+**Quorum**
+
+Tagline:
+
+> Research the case. Challenge the thesis. Make the decision.
+
+Public positioning:
+
+> Evidence-backed investment research built for better investment decisions.
+
+Quorum is the public-facing brand of the AI-assisted investment research system.
+
+Public-facing materials must use "Quorum" rather than "AI Investment Committee" as the primary product name.
+
+The product should feel:
+- institutional
+- analytical
+- credible
+- premium
+- evidence-driven
+- restrained
+
+Avoid:
+- hype
+- trading-gamification
+- crypto aesthetics
+- generic AI-SaaS visual language
+- promises of investment returns
+
+The public MVP exists to validate demand with real users before major architectural expansion.
+
+Do not sacrifice domain correctness or deterministic financial logic for marketing/UI changes.
