@@ -38,6 +38,16 @@ outputs/*
 !data/amazon_snapshot.json
 data/public.db
 
+# Feature 011 AWS deployment: never commit the downloaded Lightsail SSH
+# private key or any rendered (domain-substituted) config artifacts.
+deploy/.ssh/
+deploy/*.rendered
+
+# Feature 011: shared secret CloudFront injects as a custom header on every
+# request to the Lambda origin (see research.md Decision 7 amendment) — a
+# fresh value generated locally by provision_lambda.sh, never committed.
+deploy/.origin-verify-secret
+
 # Editors / OS
 .vscode/
 .idea/

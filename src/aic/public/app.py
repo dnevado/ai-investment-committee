@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import Annotated
@@ -16,7 +17,20 @@ from aic.public.storage import SqliteStorage, Storage
 
 _PACKAGE_DIR = Path(__file__).resolve().parent
 _DEFAULT_SNAPSHOT_PATH = _PACKAGE_DIR.parent.parent.parent / "data" / "amazon_snapshot.json"
-_DEFAULT_DB_PATH = _PACKAGE_DIR.parent.parent.parent / "data" / "public.db"
+# In Lambda, this module's own `app = create_app()` below runs as an
+# unavoidable import-time side effect (importing anything under aic.public
+# initializes this module) even though lambda_handler.py always passes its
+# own DynamoDbStorage explicitly — Lambda's filesystem is read-only except
+# /tmp, so the plain repo-relative default path would crash module import
+# with "unable to open database file" before lambda_handler.py's override
+# ever gets a chance to matter. AWS_LAMBDA_FUNCTION_NAME is a standard,
+# always-set Lambda environment variable, used here only to pick a writable
+# throwaway path; local/test behavior (that variable is unset) is unchanged.
+_DEFAULT_DB_PATH = (
+    Path("/tmp/public.db")
+    if os.environ.get("AWS_LAMBDA_FUNCTION_NAME")
+    else _PACKAGE_DIR.parent.parent.parent / "data" / "public.db"
+)
 
 
 def _load_default_presentation() -> AmazonPresentation:

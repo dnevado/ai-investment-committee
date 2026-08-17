@@ -310,39 +310,14 @@ Iteration 11 Multi-company
 
 Do not skip directly to AWS or UI.
 
-# MVP public validation
+# Public MVP Validation — Current Phase
 
-The MVP is now technically converged.
+The MVP is technically converged.
 
-Before major architectural rework, the next objective is to validate the product with the target audience.
+The current objective is to validate the public product with real users,
+not to expand the investment engine or continue architectural development.
 
-The public validation layer includes:
-
-- brand identity
-- public landing page
-- clear value proposition
-- primary CTA
-- simple user registration
-- controlled access to the MVP
-- analytics
-- user feedback
-- conversion measurement
-
-The public validation layer must not alter the investment-analysis domain.
-
-The landing page is a product-validation interface, not part of the investment engine.
-
-Do not introduce major backend or architectural changes solely to support the landing page.
-
-The purpose of this phase is to answer:
-
-> Do real target users understand the product, trust the proposition, and want to use the investment committee workflow?
-
-Success should be measured through observable user behavior rather than subjective opinions alone.
-
-# Public product identity
-
-The public product brand is:
+The public product is:
 
 **Quorum**
 
@@ -350,29 +325,67 @@ Tagline:
 
 > Research the case. Challenge the thesis. Make the decision.
 
-Public positioning:
+## Current priority
 
-> Evidence-backed investment research built for better investment decisions.
+Feature 011 is the final public-validation feature.
 
-Quorum is the public-facing brand of the AI-assisted investment research system.
+Its purpose is:
 
-Public-facing materials must use "Quorum" rather than "AI Investment Committee" as the primary product name.
+```text
+Landing
+ → Product understanding
+ → Real Amazon case
+ → CTA
+ → Registration
+ → Feedback
+ → Measurement
+ → Minimal AWS deployment
+ → Real-world validation
 
-The product should feel:
-- institutional
-- analytical
-- credible
-- premium
-- evidence-driven
-- restrained
+ ## Public deployment constraints
 
-Avoid:
-- hype
-- trading-gamification
-- crypto aesthetics
-- generic AI-SaaS visual language
-- promises of investment returns
+For the initial public validation:
 
-The public MVP exists to validate demand with real users before major architectural expansion.
+- Use the existing AWS account.
+- Prefer the simplest AWS services possible.
+- The landing artifact should be deployable as a static site to Amazon S3.
+- Do not introduce Kubernetes, ECS, Lambda-based application architecture,
+  API Gateway, databases, queues, or other infrastructure unless required by
+  an existing registration/feedback backend.
+- Keep the public landing page independent from the investment-analysis engine.
+- Validate existing registration, feedback and analytics backends before
+  exposing the site publicly.
+- Use a low-cost custom domain.
+- HTTPS should be enabled.
+- Deployment should be reproducible but remain simple enough to operate
+  manually during validation.
+- No infrastructure optimization is required at this stage.
 
-Do not sacrifice domain correctness or deterministic financial logic for marketing/UI changes.
+The goal is not production scalability.
+
+The goal is:
+
+S3/static hosting → domain → public landing → existing backend endpoints
+→ registration/feedback/analytics.
+
+
+## Public validation freeze
+
+Feature 011 is the final landing-page iteration.
+
+Do not make further unsolicited changes to:
+
+- landing-page visual design
+- typography
+- color system
+- CTA hierarchy
+- landing-page information architecture
+- marketing copy
+- Amazon presentation structure
+
+unless explicitly requested by the user.
+
+The next engineering objective is deployment and validation, not redesign.
+
+After deployment, visual or copy changes should only be made in response to
+measured user behavior or explicit user feedback.

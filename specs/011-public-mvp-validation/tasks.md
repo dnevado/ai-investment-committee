@@ -1,287 +1,759 @@
 ---
 
-description: "Task list template for feature implementation"
----
+## description: "Task list for public MVP validation and AWS deployment"
 
 # Tasks: Public MVP Validation
 
 **Input**: Design documents from `/specs/011-public-mvp-validation/`
 
-**Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/public-interface.md, quickstart.md
+**Prerequisites**: `plan.md`, `spec.md`, `research.md`, `data-model.md`,
+`contracts/public-interface.md`, `quickstart.md`
 
-**Tests**: Included as normal implementation deliverables per story (not write-first TDD),
-matching the convention used in 006/007/009/010 — this feature's own FR-016/SC-007 also
-require the entire pre-existing suite to stay green, which is verified in Polish.
+**Current objective**: The public validation application itself is already implemented and
+tested (Phases 1–9, T001–T034). The remaining objective is to deploy it to AWS using the
+serverless architecture the current `spec.md` mandates (S3 + CloudFront + Lambda +
+DynamoDB — see plan.md, research.md Decisions 7–9), expose it through a real custom domain
+over HTTPS, verify the complete validation funnel end-to-end, and prove that production
+registration data survives independent static-site and Lambda redeployments.
 
-**Organization**: Tasks are grouped by user story (spec.md) to enable independent
-implementation and testing of each story. This is the first feature in this project with a
-new top-level dependency addition (`fastapi`, `uvicorn`, `jinja2`, `python-multipart`) and
-the first with an external HTTP surface — both explicitly authorized by this feature's own
-spec/plan as a justified Constitution VIII deviation (see plan.md Complexity Tracking).
+**Revision note (2026-08-16, second)**: An earlier Phase 10 (T035–T068, below, kept for
+history) targeted a single AWS Lightsail instance running `systemd` + Caddy + SQLite.
+`spec.md` was replaced with a complete specification that explicitly forbids that
+architecture. T035–T039's *files* are superseded and scheduled for removal (T080); T040–
+T068 describe manual steps against infrastructure that must not be built, so they are not
+carried forward as actionable tasks — the new Phase 10 (revised), T069 onward, replaces
+them.
+
+**Tests**: Automated application tests are already complete in Phases 1–9. The new
+`DynamoDbStorage` gets its own automated tests (against `moto`, no real AWS calls — T074).
+Everything AWS-account-specific is verified manually against the real environment/domain.
+
+**Organization**: Tasks are grouped by implementation phase and user story. User Stories
+1–6 are already implemented. User Story 7 is the deployment/publication objective.
 
 ## Format: `[ID] [P?] [Story] Description`
 
-- **[P]**: Can run in parallel (different files, no dependencies)
-- **[Story]**: Which user story this task belongs to (US1-US6)
-- Include exact file paths in descriptions
+* **[P]**: Can run in parallel because it touches different files and has no dependency on
+  another task in the same phase.
+* **[Story]**: User story associated with the task.
+* Exact file paths are included in implementation tasks.
 
 ## Path Conventions
 
-Single project, `src`-layout: new package `src/aic/public/`, new script
-`scripts/capture_amazon_snapshot.py`, new data file `data/amazon_snapshot.json`, new test
-directory `tests/unit/public/` (all basenames `public_`/`test_public_`-prefixed from the
-start, per the 006/007/009/010 lesson on cross-directory test-module collisions). Depends
-on `scripts/mvp_amazon_dataset.py` (010) and `aic.workflow.run_investment_workflow` (009)
-only at snapshot-capture time — never at request-serving time (research.md Decision 2).
+Single project, `src`-layout:
 
-## Phase 1: Setup
-
-**Purpose**: Add the new dependencies and establish the `aic.public` package shell.
-
-- [X] T001 Add `fastapi`, `uvicorn`, `jinja2`, `python-multipart` to `pyproject.toml`'s `dependencies`, then run `uv sync` (research.md Decision 1)
-- [X] T002 Create `src/aic/public/__init__.py` as an initially empty module, establishing the `aic.public` package (contents populated incrementally by later tasks)
-
-**Checkpoint**: Dependencies installed; package shell exists.
+* Public application: `src/aic/public/` (gains `lambda_handler.py`; `storage.py` gains
+  `DynamoDbStorage` alongside the unchanged `SqliteStorage`)
+* Static-site build script: `scripts/build_static_site.py`
+* Deployment artifacts: `deploy/`
+* Public snapshot: `data/amazon_snapshot.json`
+* Tests: `tests/unit/public/`
+* Production persistence: DynamoDB (three tables — data-model.md). SQLite remains local/
+  test-only (FR-021).
+* No deployment task modifies `aic.dcf`/`aic.domain`/`aic.research`/`aic.bullbear`/
+  `aic.committee`/`aic.report`/`aic.workflow`.
 
 ---
 
-## Phase 2: Foundational (Blocking Prerequisites)
+# Phase 1: Setup
 
-**Purpose**: The shared read model, storage layer, snapshot data, and app scaffold every
-user story depends on.
+**Purpose**: Add the public-layer dependencies and establish the package shell.
 
-**⚠️ CRITICAL**: No user story work can begin until this phase is complete
+* [x] T001 Add `fastapi`, `uvicorn`, `jinja2`, `python-multipart` to `pyproject.toml` dependencies and run `uv sync` (research.md Decision 1).
+* [x] T002 Create `src/aic/public/__init__.py` as the public package shell.
 
-- [X] T003 [P] Create `src/aic/public/storage.py`: a `Storage` protocol plus a `SqliteStorage` implementation covering the three tables from data-model.md (`registrations` with `email_normalized UNIQUE`, `feedback_submissions`, `validation_events`), constructible against a file path or `":memory:"` for tests (research.md Decision 3; data-model.md "Storage schema")
-- [X] T004 [P] Create `src/aic/public/presentation.py`: `EvidenceItemView` and `AmazonPresentation` Pydantic models, plus `build_presentation(result: WorkflowResult) -> AmazonPresentation` mapping every field per data-model.md's `AmazonPresentation` table, including the FACT/CALCULATION/ASSUMPTION/INTERPRETATION/OPINION → human-label mapping for `EvidenceItemView.classification` (data-model.md; FR-004, FR-005)
-- [X] T005 [P] Create `src/aic/public/registration.py`: `EarlyAccessRegistration` Pydantic model (`email: EmailStr` required, rest optional) and `classify_qualified(role: str | None) -> bool` per research.md Decision 4
-- [X] T006 [P] Create `src/aic/public/feedback.py`: `FeedbackSubmission` Pydantic model (six optional answer fields + optional `email`) per data-model.md
-- [X] T007 [P] Create `src/aic/public/events.py`: `ValidationEvent` (`event_type: Literal[...]` per the seven-value set) and `FunnelMetrics` Pydantic models, plus `compute_funnel_metrics(storage, since=None, until=None) -> FunnelMetrics` implementing FR-011's three rate formulas with zero-denominator guards (data-model.md "FunnelMetrics")
-- [X] T008 Create `scripts/capture_amazon_snapshot.py`: builds a `WorkflowInput` via `scripts/mvp_amazon_dataset.build_workflow_input()`, runs `run_investment_workflow` with a real `OpenAIProvider` (mirrors `mvp_amazon_acceptance.py`'s settings/provider setup), converts the result via `presentation.build_presentation`, and writes `data/amazon_snapshot.json` (`model_dump_json`) (depends on T004; research.md Decision 2)
-- [X] T009 Run `uv run python scripts/capture_amazon_snapshot.py` to generate `data/amazon_snapshot.json` and commit the resulting file — makes a real OpenAI API call; requires `AIC_OPENAI_API_KEY` configured (depends on T008)
-- [X] T010 Create `src/aic/public/app.py`: a `create_app(*, storage: Storage | None = None, presentation: AmazonPresentation | None = None) -> FastAPI` factory that, absent overrides, loads `data/amazon_snapshot.json` and opens the default SQLite file at startup — accepting overrides so tests never touch the real snapshot file or a real database (depends on T003, T004); module-level `app = create_app()` for `uvicorn aic.public.app:app`
-- [X] T011 Add `AmazonPresentation`, `EarlyAccessRegistration`, `FeedbackSubmission`, `ValidationEvent`, `FunnelMetrics`, `Storage`, `SqliteStorage`, `create_app` exports to `src/aic/public/__init__.py` (depends on T002-T007, T010; same file as T002)
-
-**Checkpoint**: Foundation ready — user story implementation can now begin.
+**Checkpoint**: Public dependencies and package structure exist.
 
 ---
 
-## Phase 3: User Story 1 - Understand the Value Proposition Within Seconds (Priority: P1) 🎯 MVP
+# Phase 2: Foundational
 
-**Goal**: `GET /` renders AIC's brand identity, value proposition, and a plain-language
-workflow explanation, and records one `landing_visit` event per request.
+**Purpose**: Establish the storage layer, public read model, registration/feedback/event
+models, validated Amazon snapshot, and FastAPI application scaffold.
 
-**Independent Test**: Request `GET /` and confirm the response contains the brand name,
-value proposition, and workflow summary without technical jargon, and that exactly one
-`landing_visit` event is recorded per request.
+* [x] T003 [P] Create `src/aic/public/storage.py` with the `Storage` protocol and
+  `SqliteStorage` implementation covering `registrations`, `feedback_submissions`, and
+  `validation_events`, including the unique normalized-email constraint and support for
+  both filesystem and `":memory:"` databases.
 
-### Implementation for User Story 1
+* [x] T004 [P] Create `src/aic/public/presentation.py` with `EvidenceItemView`,
+  `AmazonPresentation`, and `build_presentation(result: WorkflowResult) ->
+  AmazonPresentation`, mapping the validated workflow result into the stable public
+  presentation/read model and translating evidence classifications into human-readable
+  labels.
 
-- [X] T012 [US1] Create `src/aic/public/templates/base.html` (shared layout/head) and `src/aic/public/templates/landing.html`'s hero + workflow-explanation sections (brand name "AI Investment Committee", concise value proposition, Data → Research → Thesis → Bull → Bear → DCF → Committee → Memo explanation), avoiding "revolutionizing," autonomous-trading-bot, or guaranteed-return language throughout (FR-001, FR-002; `aic-brand-landing` skill "Hero")
-- [X] T013 [US1] Wire `GET /` in `src/aic/public/app.py` to render `landing.html` with the loaded `AmazonPresentation` and record one `landing_visit` `ValidationEvent` synchronously before responding (depends on T010, T012; contracts/public-interface.md "GET /")
-- [X] T014 [US1] Create `tests/unit/public/public_fakes.py` (in-memory `Storage` fixture helper) and `tests/unit/public/test_public_app.py` with `test_get_landing_page_returns_value_proposition` and `test_get_landing_page_records_one_landing_visit_event` (depends on T013)
+* [x] T005 [P] Create `src/aic/public/registration.py` with the
+  `EarlyAccessRegistration` Pydantic model and `classify_qualified(role)` heuristic defined
+  by the specification.
 
-**Checkpoint**: User Story 1 is independently functional — the hero/value-proposition
-content renders and visits are counted.
+* [x] T006 [P] Create `src/aic/public/feedback.py` with the six optional qualitative
+  feedback fields and optional email association.
 
----
+* [x] T007 [P] Create `src/aic/public/events.py` with the validation-event model,
+  funnel-metrics model, supported event types, and `compute_funnel_metrics(...)` including
+  zero-denominator guards.
 
-## Phase 4: User Story 2 - Inspect a Real, Trustworthy Investment Example (Priority: P1)
+* [x] T008 Create `scripts/capture_amazon_snapshot.py` to build the existing Amazon
+  workflow input, execute the validated Feature 009/010 workflow once using the real
+  provider configuration, convert the result through `build_presentation`, and write
+  `data/amazon_snapshot.json`.
 
-**Goal**: The landing page's example section renders the Amazon `AmazonPresentation` in
-human-readable form, with every figure labeled fact/calculation/assumption/AI analysis.
+* [x] T009 Run `uv run python scripts/capture_amazon_snapshot.py` with
+  `AIC_OPENAI_API_KEY` configured and commit the resulting
+  `data/amazon_snapshot.json`.
 
-**Independent Test**: Request `GET /` and confirm the response contains company identity,
-implied value/share, recommendation, conviction, thesis/bull/bear summaries, key
-assumptions/risks, and a labeled evidence list — with zero raw Python/Pydantic
-representations.
+* [x] T010 Create `src/aic/public/app.py` with
+  `create_app(*, storage=None, presentation=None) -> FastAPI`, loading the committed
+  Amazon snapshot and opening the default SQLite database when no test overrides are
+  supplied. Keep `app = create_app()` for Uvicorn.
 
-### Implementation for User Story 2
+* [x] T011 Export the public API from `src/aic/public/__init__.py`.
 
-- [X] T015 [US2] Extend `src/aic/public/templates/landing.html` with the Amazon example section: company identity, implied value/share, recommendation, conviction, thesis/bull/bear summaries, key assumptions, key risks, and an evidence list rendering each `EvidenceItemView`'s title/excerpt/classification/source (depends on T012, same file; FR-004, FR-005)
-- [X] T016 [US2] In `tests/unit/public/test_public_presentation.py`, add `test_build_presentation_maps_workflow_result_fields` and `test_build_presentation_classifies_evidence_types` using a fixture `WorkflowResult` (construct via existing `tests/unit/workflow/workflow_fakes.py`-style fakes or a hand-built result), asserting every `AmazonPresentation` field and the FACT→"Reported fact"/CALCULATION→"Calculation"/ASSUMPTION→"Forecast assumption"/INTERPRETATION,OPINION→"AI analysis" mapping (depends on T004)
-- [X] T017 [US2] In `tests/unit/public/test_public_app.py`, add `test_get_landing_page_shows_amazon_example_in_human_readable_form` asserting the response HTML contains the snapshot's implied-value-per-share string and recommendation, and does not contain a raw `repr(...)`/`model_dump()`-style fragment (depends on T015)
-
-**Checkpoint**: User Stories 1 AND 2 both work independently — visitors see the value
-proposition and a trustworthy, legible real example.
-
----
-
-## Phase 5: User Story 3 - Express Interest With Minimal-Friction Registration (Priority: P1)
-
-**Goal**: The primary CTA leads to a form requiring only email; submission succeeds,
-duplicates are not double-counted, no account/session is created.
-
-**Independent Test**: `POST /register` with only an email set succeeds and is recorded; an
-invalid email is rejected; resubmitting the same email does not create a second row.
-
-### Implementation for User Story 3
-
-- [X] T018 [US3] Create `src/aic/public/templates/register.html` (email required; name, role, experience, interests, feedback optional; primary CTA link on `landing.html` points here) and `src/aic/public/templates/register_confirmation.html` (states this is early access/validation, not a live product) (FR-006, FR-007; spec US3/AC2)
-- [X] T019 [US3] Wire `GET /register` and `POST /register` in `app.py`: validate via `EarlyAccessRegistration`, classify `qualified` via `classify_qualified`, persist via `storage.create_registration` (idempotent on `email_normalized`), record `signup_completed` and `early_access_requested` events on success, redirect `303` to the confirmation page; on invalid email, re-render the form with `422` and an error message (depends on T005, T010, T018; contracts/public-interface.md "POST /register")
-- [X] T020 [US3] In `tests/unit/public/test_public_registration.py`, add tests for: email-only submission valid; malformed email rejected; `classify_qualified` returns `True` for each target-audience role value and `False` for blank/out-of-audience values (depends on T005)
-- [X] T021 [US3] In `tests/unit/public/test_public_storage.py`, add `test_duplicate_email_registration_does_not_create_second_row` exercising the `email_normalized UNIQUE` constraint (depends on T003)
-- [X] T022 [P] [US3] In `tests/unit/public/test_public_app.py`, add `test_post_register_with_only_email_redirects_to_confirmation`, `test_post_register_with_malformed_email_returns_422`, and `test_post_register_duplicate_email_is_not_double_counted` (depends on T019)
-
-**Checkpoint**: User Stories 1-3 all work independently — the core P1 funnel (understand →
-trust → register) is complete. This is the feature's MVP slice.
+**Checkpoint**: Public application foundation is complete and decoupled from live workflow
+execution.
 
 ---
 
-## Phase 6: User Story 4 - Provide Qualitative Feedback (Priority: P2)
+# Phase 3: User Story 1 — Understand the Value Proposition
 
-**Goal**: The six-question feedback form works whether or not the visitor registered.
+**Priority**: P1
 
-**Independent Test**: `POST /feedback` with at least one answer succeeds and is recorded,
-with no prior registration required; an all-blank submission is rejected.
+* [x] T012 Create the shared public templates in
+  `src/aic/public/templates/base.html` and
+  `src/aic/public/templates/landing.html`, implementing the final approved
+  Problem → Quorum Difference → How It Works → Real-World Validation →
+  Why It's Different → Evidence → CTA narrative and the approved visual identity.
 
-### Implementation for User Story 4
+* [x] T013 Wire `GET /` in `src/aic/public/app.py` to render the landing page and record
+  one `landing_visit` event synchronously before responding.
 
-- [X] T023 [US4] Create `src/aic/public/templates/feedback.html` (the exact six questions from spec US4/AC1) and `src/aic/public/templates/feedback_confirmation.html` (FR-009)
-- [X] T024 [US4] Wire `GET /feedback` and `POST /feedback` in `app.py`: reject an all-six-blank submission with `422`, otherwise persist via `storage.create_feedback` and redirect to the confirmation page — no registration lookup or requirement (depends on T006, T010, T023; contracts/public-interface.md "POST /feedback"; FR-018)
-- [X] T025 [US4] In `tests/unit/public/test_public_feedback.py`, add tests for: all-blank rejected; single non-blank answer accepted; submission succeeds with no associated `email` (depends on T006)
-- [X] T026 [P] [US4] In `tests/unit/public/test_public_app.py`, add `test_post_feedback_succeeds_without_prior_registration` and `test_post_feedback_all_blank_returns_422` (depends on T024)
+* [x] T014 Create public application test helpers in
+  `tests/unit/public/public_fakes.py` and tests in
+  `tests/unit/public/test_public_app.py` covering the landing-page value proposition and
+  visit tracking.
 
-**Checkpoint**: User Stories 1-4 all work independently.
-
----
-
-## Phase 7: User Story 5 - Measure the Validation Funnel (Priority: P2)
-
-**Goal**: `POST /events` records interaction events; `GET /metrics` reports counts and the
-three defined conversion rates for a given time window.
-
-**Independent Test**: Record a small set of events/registrations, then confirm `GET
-/metrics` returns matching counts and correctly computed CTA/registration/qualified-interest
-rates.
-
-### Implementation for User Story 5
-
-- [X] T027 [US5] Wire `POST /events` in `app.py`: record the given `event_type` as a `ValidationEvent` and always respond `202 Accepted`, even for a malformed/unknown `event_type` (best-effort; depends on T007, T010; contracts/public-interface.md "POST /events")
-- [X] T028 [US5] Wire `GET /metrics` in `app.py`: parse optional `since`/`until` query params, call `compute_funnel_metrics`, and return the `FunnelMetrics` as JSON (depends on T007, T010; contracts/public-interface.md "GET /metrics")
-- [X] T029 [US5] In `tests/unit/public/test_public_events.py`, add tests for: each event type records correctly; `compute_funnel_metrics` computes all three rates correctly against a constructed set of events/registrations, including the 0-visits and 0-registrations zero-denominator cases (depends on T007)
-- [X] T030 [P] [US5] In `tests/unit/public/test_public_app.py`, add `test_post_events_always_returns_202_even_for_unknown_type` and `test_get_metrics_reflects_recorded_activity` (depends on T027, T028)
-
-**Checkpoint**: User Stories 1-5 all work independently — the full quantitative funnel is
-measurable end to end.
+**Checkpoint**: The public landing page communicates the product proposition and tracks
+landing visits.
 
 ---
 
-## Phase 8: User Story 6 - See Explicit Trust and Disclaimer Messaging (Priority: P3)
+# Phase 4: User Story 2 — Inspect a Real Investment Example
 
-**Goal**: Disclaimer language is visible near the Amazon example and near the
-CTA/registration; no guaranteed-return or financial-advice language appears anywhere.
+**Priority**: P1
 
-**Independent Test**: Review `GET /` and `GET /register` and confirm disclaimer text is
-present adjacent to both the example and the registration form.
+* [x] T015 Extend `src/aic/public/templates/landing.html` with the final Amazon/AMZN
+  validation presentation using the committed `AmazonPresentation` snapshot. Render only
+  approved presentation fields and the curated evidence sample; do not introduce new
+  financial figures or recompute the workflow.
 
-### Implementation for User Story 6
+* [x] T016 Add presentation-model tests in
+  `tests/unit/public/test_public_presentation.py` covering every
+  `AmazonPresentation` mapping and all evidence classification mappings.
 
-- [X] T031 [US6] Create a shared `src/aic/public/templates/_disclaimer.html` partial (valuation is model-dependent; assumptions affect results; AI-generated analysis can be wrong; outputs are research assistance, not financial advice; verify source information independently) and include it in `landing.html` (adjacent to the Amazon example) and `register.html` (adjacent to the CTA/registration form) (depends on T012, T015, T018; FR-012)
-- [X] T032 [P] [US6] In `tests/unit/public/test_public_app.py`, add `test_landing_page_shows_disclaimer_near_example`, `test_register_page_shows_disclaimer_near_cta`, and `test_no_guaranteed_return_language_anywhere` (asserting phrases like "guaranteed," "get rich," "revolutionizing" do not appear in `/`, `/register`, or `/feedback` responses) (depends on T031)
+* [x] T017 Add the human-readable Amazon-example rendering test to
+  `tests/unit/public/test_public_app.py`, ensuring the response contains the expected
+  snapshot-derived valuation/recommendation content and no raw Python/Pydantic
+  representation.
 
-**Checkpoint**: All six user stories are independently functional.
-
----
-
-## Phase 9: Polish & Cross-Cutting Concerns
-
-- [X] T033 Run `pytest`, `ruff check .`, and `mypy src` across the full repository; confirm every pre-existing test (221, per feature 010) still passes unmodified and only new `tests/unit/public/` tests were added (FR-016; SC-007)
-- [X] T034 Walk through `quickstart.md`'s manual browser section end to end (`uv run uvicorn aic.public.app:app --reload`) and confirm every listed expected outcome holds, including the duplicate-registration and `/metrics` consistency checks
-
----
-
-## Dependencies & Execution Order
-
-### Phase Dependencies
-
-- **Setup (Phase 1)**: No dependencies — BLOCKS Foundational (T003+ need `fastapi`/`jinja2` importable)
-- **Foundational (Phase 2)**: Depends on Setup — BLOCKS all user stories (in particular, every route-wiring task depends on T010's `create_app`)
-- **User Stories (Phase 3-8)**: All depend on Phase 2 completing
-  - US1/US2 share `landing.html` and must stay sequential against each other (T012 → T015)
-  - US3, US4, US5, US6 each touch their own template file(s) and are otherwise independent
-    of one another, though US6's disclaimer partial (T031) depends on US1/US2/US3's
-    templates already existing (T012, T015, T018)
-  - `app.py` (T010) is shared by every story's route-wiring task (T013, T019, T024, T027,
-    T028) — these must be applied sequentially against each other even though they belong
-    to different stories
-- **Polish (Phase 9)**: Depends on all six user stories being complete
-
-### User Story Dependencies
-
-- **User Story 1 (P1)**: Depends only on Phase 2
-- **User Story 2 (P1)**: Depends on Phase 2 and on US1's `landing.html`/`T012` existing (same file)
-- **User Story 3 (P1)**: Depends only on Phase 2 — independent of US1/US2's files
-- **User Story 4 (P2)**: Depends only on Phase 2 — independent of every other story's files
-- **User Story 5 (P2)**: Depends only on Phase 2 — independent of every other story's files
-- **User Story 6 (P3)**: Depends on Phase 2 and on US1/US2/US3's templates already existing (T012, T015, T018)
-
-### Within Each User Story
-
-- T012 → T015 (US1 → US2, same file: `landing.html`)
-- T013, T019, T024, T027, T028 are all edits to `app.py` and must be applied in some
-  sequential order relative to each other, regardless of their `[P]`/story grouping
-- Each story's own test-file additions depend on that story's own implementation tasks
-  completing first
-
-### Parallel Opportunities
-
-- T003-T007 (Phase 2 models/storage) can all run in parallel — five independent new files
-- T020/T021 (US3), T025 (US4), T029 (US5) can run in parallel with each other — different
-  test files, no shared state
-- T022, T026, T030, T032 (each story's `test_public_app.py` additions) are all edits to one
-  shared test file and must be applied sequentially against each other, even though each
-  is tagged `[P]` relative to its *own* story's other tasks
+**Checkpoint**: The public page presents the same validated Amazon workflow output without
+live recomputation.
 
 ---
 
-## Parallel Example: Phase 2
+# Phase 5: User Story 3 — Minimal-Friction Registration
 
-```bash
-# After Phase 1 completes, in parallel:
-Task: "Create src/aic/public/storage.py (Storage protocol + SqliteStorage)"
-Task: "Create src/aic/public/presentation.py (AmazonPresentation + build_presentation)"
-Task: "Create src/aic/public/registration.py (EarlyAccessRegistration + classify_qualified)"
-Task: "Create src/aic/public/feedback.py (FeedbackSubmission)"
-Task: "Create src/aic/public/events.py (ValidationEvent + FunnelMetrics + compute_funnel_metrics)"
+**Priority**: P1
+
+* [x] T018 Create `src/aic/public/templates/register.html` and
+  `src/aic/public/templates/register_confirmation.html` using the final approved
+  registration UX: email required and role represented by the approved radio-button
+  options; keep optional backend fields compatible with the existing model.
+
+* [x] T019 Wire `GET /register` and `POST /register` in
+  `src/aic/public/app.py`, including validation, qualification classification,
+  idempotent registration persistence, registration events, and `303` confirmation
+  redirect.
+
+* [x] T020 Add registration-model tests in
+  `tests/unit/public/test_public_registration.py` covering valid email-only submission,
+  malformed email rejection, and qualification classification.
+
+* [x] T021 Add the duplicate-email persistence test to
+  `tests/unit/public/test_public_storage.py`.
+
+* [x] T022 Add application-level registration tests to
+  `tests/unit/public/test_public_app.py`, covering successful email-only registration,
+  malformed email rejection, and duplicate-registration behavior.
+
+**Checkpoint**: The primary validation signal — completed registration — works without
+accounts, passwords, or authentication.
+
+---
+
+# Phase 6: User Story 4 — Qualitative Feedback
+
+**Priority**: P2
+
+* [x] T023 Create `src/aic/public/templates/feedback.html` containing exactly the six
+  questions specified by US4 and create
+  `src/aic/public/templates/feedback_confirmation.html`.
+
+* [x] T024 Wire `GET /feedback` and `POST /feedback` in
+  `src/aic/public/app.py`. Reject all-blank submissions with `422`; persist any submission
+  containing at least one answer; do not require a prior registration.
+
+* [x] T025 Add feedback-model tests in
+  `tests/unit/public/test_public_feedback.py` covering all-blank rejection, single-answer
+  acceptance, and submission without an associated registration/email.
+
+* [x] T026 Add application-level feedback tests to
+  `tests/unit/public/test_public_app.py`.
+
+**Checkpoint**: Feedback is independently collectible from registration.
+
+---
+
+# Phase 7: User Story 5 — Measure the Validation Funnel
+
+**Priority**: P2
+
+* [x] T027 Wire `POST /events` in `src/aic/public/app.py` as a best-effort analytics
+  endpoint returning `202 Accepted` even when the supplied event type is malformed or
+  unknown.
+
+* [x] T028 Wire `GET /metrics` in `src/aic/public/app.py`, including optional time-window
+  filtering and the three specified conversion rates.
+
+* [x] T029 Add event and funnel-metric tests in
+  `tests/unit/public/test_public_events.py`, including zero-denominator cases.
+
+* [x] T030 Add application-level event and metrics tests to
+  `tests/unit/public/test_public_app.py`.
+
+**Checkpoint**: The validation experiment can measure visits, CTA activity, registrations,
+qualified interest, and feedback.
+
+---
+
+# Phase 8: User Story 6 — Trust and Disclaimer Messaging
+
+**Priority**: P3
+
+* [x] T031 Create the shared disclaimer partial
+  `src/aic/public/templates/_disclaimer.html` and include it adjacent to the Amazon
+  example and registration/CTA areas.
+
+* [x] T032 Add disclaimer and prohibited-language tests to
+  `tests/unit/public/test_public_app.py`, covering landing, registration, and feedback
+  pages.
+
+**Checkpoint**: The public experience explicitly positions the output as research
+assistance rather than financial advice and contains no guaranteed-return messaging.
+
+---
+
+# Phase 9: Polish and Full Regression
+
+**Purpose**: Confirm that the complete application remains correct and green before
+deployment.
+
+* [x] T033 Run the full repository validation:
+  `pytest`, `ruff check .`, and `mypy src`.
+  Confirm that all pre-existing Feature 010 tests remain green and that no investment-engine
+  behavior has changed.
+
+* [x] T034 Execute the manual browser walkthrough from `quickstart.md`, including landing,
+  Amazon example, CTA, registration, duplicate registration, feedback, and `/metrics`
+  consistency checks against the local application.
+
+**Checkpoint**: The application is implementation-complete locally. `aic.public`'s route
+logic is stable; only its production storage/entry-point wiring changes below.
+
+---
+
+# Phase 10 (SUPERSEDED — kept for history, not actionable): Publish the Validation MVP on a Lightsail Instance
+
+**Superseded 2026-08-16 (second revision)**: `spec.md` was replaced with a complete
+specification that explicitly forbids this architecture (Lightsail, EC2, systemd, Caddy, an
+always-running Python server, production SQLite). **Do not execute T040–T068 below.** They
+describe manual steps against infrastructure that must not be built. T035–T039's files
+(`deploy/quorum.service`, `deploy/Caddyfile`, `deploy/provision.sh`, `deploy/release.sh`,
+`deploy/backup_to_s3.sh`) exist on disk from when these tasks were completed, and are
+removed by T080 in the new Phase 10 (revised) below. See plan.md's Revision history and
+research.md Decision 6 (superseded) for the full reasoning.
+
+<details>
+<summary>Original Phase 10 content (collapsed — historical record only)</summary>
+
+**Priority**: P1
+
+**Goal**: Make the already-complete application publicly accessible through a real custom
+domain over HTTPS using a single AWS Lightsail instance. Registration, feedback,
+analytics, and the Amazon snapshot must behave identically to local execution.
+
+Production topology (superseded):
+
+```text
+Internet → Custom Domain → Caddy/Let's Encrypt → 127.0.0.1:8000 → FastAPI/Uvicorn
+                                                                     ├── Amazon snapshot
+                                                                     ├── templates/assets
+                                                                     └── SQLite database
+```
+
+* [x] T035 [P] [US7] Create `deploy/quorum.service` (systemd unit) — **superseded, see T080**.
+* [x] T036 [P] [US7] Create `deploy/Caddyfile` — **superseded, see T080**.
+* [x] T037 [P] [US7] Create `deploy/provision.sh` (Lightsail instance + static IP + firewall) — **superseded, see T080**.
+* [x] T038 [US7] Create `deploy/release.sh` (rsync app code, `uv sync`, restart systemd/Caddy) — **superseded, see T080**.
+* [x] T039 [P] [US7] Create `deploy/backup_to_s3.sh` (SQLite → private S3 backup) — **superseded, see T080**.
+* [ ] T040–T068 — **do not execute.** Manual AWS provisioning, first release, production
+  end-to-end validation, persistence/redeployment verification, backup verification, and a
+  final release checklist, all written against the Lightsail architecture. Superseded in
+  full by Phase 10 (revised) T081–T100 below.
+
+</details>
+
+---
+
+# Phase 10 (revised, current): Publish the Validation MVP on AWS — S3 + CloudFront + Lambda + DynamoDB
+
+**Priority**: P1
+
+**Goal**: Make the already-complete application publicly accessible through a real custom
+domain over HTTPS using the serverless architecture `spec.md` mandates. The landing page
+becomes a static artifact served by CloudFront/S3; every dynamic route (register, feedback,
+events, metrics) continues to be served by the *unmodified* `aic.public.app` FastAPI routes,
+now running inside AWS Lambda; production persistence moves to DynamoDB (plan.md, research.md
+Decisions 7–9, data-model.md).
+
+**Important constraint**: This phase MUST NOT modify `aic.dcf`, `aic.domain`,
+`aic.research`, `aic.bullbear`, `aic.committee`, `aic.report`, `aic.workflow`, or the
+validated Amazon snapshot. It MAY add new code to `src/aic/public/` (a new `Storage`
+implementation and a thin Lambda entry point) — narrowly scoped, spec-mandated, and
+consistent with the existing `Storage` protocol (constitution Principle X).
+
+Production topology (current):
+
+```text
+Browser → Custom Domain → CloudFront
+                             ├── default behavior ──────────► S3 (OAC)
+                             │                                  └── static landing page,
+                             │                                      CSS/JS, built once by
+                             │                                      scripts/build_static_site.py
+                             └── /register*, /feedback*, ────► Lambda Function URL (OAC)
+                                 /events*, /metrics*               └── aic.public.app via
+                                                                        Mangum, unmodified
+                                                                        route logic
+                                                                          │
+                                                                          ▼
+                                                                     DynamoDB
+                                                                     (registrations,
+                                                                      feedback_submissions,
+                                                                      validation_events)
+```
+
+## Application code (genuinely new — the only Python changes in this feature)
+
+* [x] T069 [P] [US7] Add `DynamoDbStorage` to `src/aic/public/storage.py`, implementing the
+  existing `Storage` protocol via `boto3`: `registrations` keyed by `email_normalized`
+  with a conditional `put_item` (`ConditionExpression="attribute_not_exists(
+  email_normalized)"`) for idempotent registration (FR-017); `feedback_submissions` keyed
+  by `feedback_id`; `validation_events` keyed by `event_id`; `compute_funnel_metrics`
+  implemented via table `Scan` with `created_at`/`event_type` filters, preserving the same
+  zero-denominator guards as `SqliteStorage`. `SqliteStorage` is not modified
+  (data-model.md "Deployment revision, second").
+
+* [x] T070 [P] [US7] Add `mangum` and `boto3` to `pyproject.toml`'s main `dependencies`;
+  add `moto` to the `dev` dependency group; run `uv sync` (research.md Decisions 7–8).
+
+* [x] T071 [US7] Create `src/aic/public/lambda_handler.py`: loads the committed
+  `AmazonPresentation` snapshot, constructs `create_app(storage=DynamoDbStorage(...),
+  presentation=...)`, and exposes `handler = Mangum(app)` as the Lambda entry point. No
+  route/template/validation logic is duplicated or reimplemented (depends on T069, T070).
+
+* [x] T072 [P] [US7] Add a `landing_visit` beacon to `src/aic/public/static/track.js`,
+  fired on `DOMContentLoaded` specifically on the landing page, `POST`ing `{"event_type":
+  "landing_visit"}` to `/events` — restores landing-visit measurement in production now
+  that `GET /` is no longer invoked per visitor (research.md Decision 9).
+
+* [x] T073 [US7] Create `scripts/build_static_site.py`: renders `templates/landing.html`
+  (with `templates/base.html`) via the same Jinja2 environment and committed
+  `AmazonPresentation` snapshot `app.py` already uses, and copies `src/aic/public/static/`
+  verbatim, into a build output directory (e.g. `dist/`) ready for S3 upload. Depends only
+  on existing T004/T012 code — no dependency on T069–T072.
+
+* [x] T074 [US7] Add `DynamoDbStorage` tests (new file or addition to
+  `tests/unit/public/test_public_storage.py`) using `moto`'s DynamoDB mock: round-trip all
+  three entity types; a second `put_item` for an existing `email_normalized` is rejected by
+  the condition expression and does not create a duplicate; `compute_funnel_metrics`
+  produces the same three rates (including zero-denominator cases) as the existing
+  `SqliteStorage` tests already verify (depends on T069; research.md Decision 8).
+
+## Deployment artifacts (replace the five superseded Lightsail files)
+
+* [x] T075 [P] [US7] Create `deploy/provision_data.sh`: idempotent AWS CLI script creating
+  the three DynamoDB tables in On-Demand capacity mode per data-model.md's schema.
+
+* [x] T076 [P] [US7] Create `deploy/provision_lambda.sh`: idempotent AWS CLI script that
+  packages `src/aic/public/` + dependencies + `lambda_handler.py`, creates the Lambda
+  function, its execution role (scoped to `PutItem`/`GetItem`/`Query`/`Scan` on exactly the
+  three table ARNs plus CloudWatch Logs — FR-024), and its Function URL (`AuthType:
+  AWS_IAM`).
+
+* [x] T077 [P] [US7] Create `deploy/provision_cdn.sh`: idempotent AWS CLI script creating a
+  private S3 bucket, requesting an ACM certificate for the real domain **in `us-east-1`**,
+  and creating the CloudFront distribution with two origins (S3 via Origin Access Control,
+  the Lambda Function URL via Origin Access Control for Lambda) and path-pattern behaviors
+  `/register*`, `/feedback*`, `/events*`, `/metrics*` → Lambda, default → S3.
+
+* [x] T078 [US7] Create `deploy/release_static.sh`: runs `scripts/build_static_site.py`,
+  syncs the build output to the S3 bucket, and invalidates the CloudFront cache for `/` and
+  `/static/*` (depends on T073, T077).
+
+* [x] T079 [US7] Create `deploy/release_lambda.sh`: re-packages `src/aic/public/` +
+  production dependencies (`--no-dev`) and updates the Lambda function code (depends on
+  T071, T076). Independently runnable from `release_static.sh` (FR-028).
+
+* [x] T080 [US7] Remove the five superseded files: `deploy/quorum.service`,
+  `deploy/Caddyfile`, `deploy/provision.sh`, `deploy/release.sh`,
+  `deploy/backup_to_s3.sh`, and the now-unused `deploy/.ssh/` directory if present (depends
+  on T075–T079 existing as replacements).
+
+## AWS provisioning (manual — requires the user's own AWS account/credentials; cannot be executed or verified in this sandbox)
+
+* [x] T081 [US7] **Manual**: run `deploy/provision_data.sh` against the real AWS account.
+
+* [x] T082 [US7] **Manual**: run `deploy/provision_lambda.sh` (depends on T081 — the
+  execution role's policy references the table ARNs).
+
+* [x] T083 [US7] **Manual**: run `deploy/provision_cdn.sh` (depends on T082 — CloudFront's
+  Lambda origin needs the Function URL to exist), then point the real domain's DNS at the
+  resulting CloudFront distribution domain name.
+
+## First production release (manual)
+
+* [x] T084 [US7] **Manual**: run `deploy/release_static.sh` (depends on T083).
+
+* [x] T085 [US7] **Manual**: run `deploy/release_lambda.sh` (depends on T082; independent
+  of T084).
+
+* [ ] T086 [US7] **Manual**: confirm `https://YOUR_DOMAIN/` serves the static landing page
+  over a valid ACM/CloudFront TLS certificate (depends on T084). **Blocked**: no custom
+  domain purchased yet (plan.md constraint: never assume a domain is available). The site
+  is verified reachable and valid over HTTPS at CloudFront's default certificate/domain
+  (`https://d2bd8kteboaclo.cloudfront.net/`) — re-run `provision_cdn.sh` with
+  `DOMAIN=yourdomain.com` once a domain exists, then complete this check.
+
+**Checkpoint**: The application is reachable through the real HTTPS domain, static content
+from S3/CloudFront and dynamic routes from Lambda/DynamoDB.
+
+---
+
+# Phase 11 (revised): Production End-to-End Validation
+
+**Purpose**: Verify the actual public funnel works against the new architecture, not
+merely that the domain resolves.
+
+* [ ] T087 [US7] **Manual**: US1 — confirm the live static landing page states what
+  Quorum is and who it's for, matching the local build.
+
+* [ ] T088 [US7] **Manual**: US2 — confirm the Amazon/AMZN example on the live landing page
+  matches the committed snapshot, with no raw Python/Pydantic output.
+
+* [x] T089 [US7] **Manual**: US3 — submit a real test registration (email only) against
+  `https://YOUR_DOMAIN/register`; confirm success and the confirmation page, served by
+  Lambda. Verified against `https://d2bd8kteboaclo.cloudfront.net/register` (real domain
+  pending T086) — `303 See Other → /register/confirmation`, and the record is visible in
+  `/metrics`.
+
+* [x] T090 [US7] **Manual**: resubmit the same test email; confirm the DynamoDB conditional
+  put rejects it and `completed_registrations` in `/metrics` is not double-counted. Verified:
+  resubmitting the same email still returns `303` (idempotent), `completed_registrations`
+  stayed at 2.
+
+* [x] T091 [US7] **Manual**: US4 — submit feedback without a prior registration; confirm
+  success. Verified: `303 See Other → /feedback/confirmation`.
+
+* [ ] T092 [US7] **Manual**: US5 — confirm `https://YOUR_DOMAIN/metrics` reflects the test
+  activity, including at least one `landing_visit` recorded via the new client-side beacon
+  (T072/research.md Decision 9), and that the three conversion rates compute correctly.
+  **Partially verified**: registration/feedback/CTA-click counts all update correctly and
+  conversion rates compute; `landing_visit` specifically was not exercised (would require
+  loading the static page in a real browser to fire the client-side beacon — not something a
+  `curl` test can trigger, since `GET /` is served as pre-rendered static content from S3,
+  not the Lambda `landing()` route).
+
+* [ ] T093 [US7] **Manual**: US6 — confirm disclaimer messaging is visible near the Amazon
+  example and CTA/registration, and that no prohibited guaranteed-return/financial-advice
+  language appears anywhere on the live site.
+
+**Checkpoint**: All six original User Stories pass against the real production domain.
+
+---
+
+# Phase 12 (revised): Independent-Release & Persistence Verification
+
+**Purpose**: Prove production data survives redeployment, and that static and Lambda
+releases are genuinely independent of each other (FR-027/FR-028, SC-012/SC-013).
+
+* [x] T094 [US7] **Manual**: record the T089 registration's state via `/metrics` before
+  redeploying anything. Verified: `completed_registrations: 2`, `feedback_submissions: 1`.
+
+* [x] T095 [US7] **Manual**: re-run `deploy/release_static.sh` only; confirm the DynamoDB
+  registration from T089 and its `/metrics` count are unaffected. Verified: counts unchanged
+  after the static-only release; landing page still 200.
+
+* [x] T096 [US7] **Manual**: re-run `deploy/release_lambda.sh` only; confirm the same
+  registration and `/metrics` count are unaffected, and that the live site still serves the
+  same committed Amazon snapshot with no live workflow/OpenAI execution. Verified: counts
+  unchanged after the Lambda-only release.
+
+**Checkpoint**: A static-site release and a Lambda release each leave DynamoDB data intact,
+independently of one another.
+
+---
+
+# Final Release Checklist (revised)
+
+* [ ] T097 [US7] Confirm the real custom domain resolves to the CloudFront distribution and
+  HTTPS is valid via the ACM certificate.
+
+* [x] T098 [US7] Confirm the static landing page (S3/CloudFront) and all four Lambda-routed
+  path prefixes (`/register*`, `/feedback*`, `/events*`, `/metrics*`) work end-to-end.
+  Verified: landing page 200, `POST /register` and `POST /feedback` both 303 to their
+  confirmation pages, `POST /events` 200, `GET /metrics` 200 with correct counts.
+
+* [x] T099 [US7] Confirm no changes were made to `aic.dcf`, `aic.research`, `aic.bullbear`,
+  `aic.committee`, `aic.report`, or `aic.workflow`, and that no public request triggers
+  `run_investment_workflow` or a live OpenAI API call (FR-016, FR-022). Verified: `git diff`
+  against those directories is empty, and the only "OpenAI" reference under `aic.public` is
+  the comment in `presentation.py` explaining why that dependency chain is excluded.
+
+* [x] T100 [US7] Record the production URL, deployment date, and AWS resource identifiers
+  (DynamoDB table names, Lambda function ARN, CloudFront distribution ID, ACM certificate
+  ARN) in the project release notes. Recorded in
+  `specs/011-public-mvp-validation/release-notes.md` (no ACM certificate yet — no custom
+  domain purchased).
+
+---
+
+# Final Checkpoint
+
+Feature 011 is complete only when all of the following are true:
+
+```text
+[✓] Public application implemented
+[✓] Amazon validated snapshot published
+[✓] Registration works
+[✓] Feedback works
+[✓] Funnel analytics work
+[✓] Disclaimer/trust messaging present
+[✓] Full automated test suite green (including DynamoDbStorage, moto-mocked)
+[ ] DynamoDB tables provisioned (On-Demand)
+[ ] Lambda function + Function URL provisioned, least-privilege IAM role
+[ ] S3 bucket + CloudFront distribution provisioned (OAC for both origins)
+[ ] ACM certificate issued (us-east-1) and DNS configured
+[ ] HTTPS custom domain live
+[ ] Public funnel validated end-to-end (including the landing_visit beacon)
+[ ] Registration survives an independent static-site release
+[ ] Registration survives an independent Lambda release
+[ ] No investment-engine changes
+[ ] No live workflow/OpenAI execution per visitor
+```
+
+The feature's finish line is:
+
+```text
+Landing (static, S3/CloudFront)
+  ↓
+Product understanding
+  ↓
+Amazon example
+  ↓
+CTA
+  ↓
+Registration (Lambda + DynamoDB)
+  ↓
+Feedback (Lambda + DynamoDB)
+  ↓
+Measurement (Lambda + DynamoDB)
+  ↓
+Serverless AWS deployment
+  ↓
+HTTPS custom domain
+  ↓
+Real-user validation
+```
+
+It does **not** include:
+
+```text
+Registration
+  ↓
+Account platform
+  ↓
+Portfolio
+  ↓
+Trading
+  ↓
+Brokerage
+  ↓
+Subscriptions
+  ↓
+Production investment platform
 ```
 
 ---
 
-## Implementation Strategy
+# Dependencies & Execution Order
 
-### MVP First (User Stories 1-3 Only)
+## Phase Dependencies
 
-1. Complete Phase 1: Setup (T001-T002)
-2. Complete Phase 2: Foundational (T003-T011) — including the real snapshot capture (T009)
-3. Complete Phase 3-5: User Stories 1, 2, 3 (T012-T022)
-4. **STOP and VALIDATE**: `pytest tests/unit/public/ -v`, then the quickstart's manual
-   browser walkthrough steps 1-5 — a visitor can understand the proposition, trust the
-   Amazon example, and register
-5. This alone answers the feature's core question ("do users want to try it, register");
-   US4/US5/US6 add qualitative depth, measurement, and trust polish
+* **Phase 1** blocks Phase 2.
+* **Phase 2** blocks User Stories 1–6.
+* **User Stories 1–6** are already implemented and validated.
+* **Phase 9** is the final local regression gate.
+* **Phase 10 (SUPERSEDED)** is historical only — not a dependency of anything below.
+* **Phase 10 (revised)** depends on Phase 9.
+* **Phase 11 (revised)** depends on successful completion of the first production release
+  (T084–T086).
+* **Phase 12 (revised)** depends on a working production deployment (Phase 11 passing).
+* The Final Release Checklist depends on Phases 10 (revised)–12 (revised).
 
-### Incremental Delivery
+## Deployment Dependencies (current architecture)
 
-1. Setup + Foundational → snapshot captured, app scaffold ready
-2. US1 → Test independently → hero/value prop renders
-3. US2 → Test independently → Amazon example renders, trustworthy and legible
-4. US3 → Test independently → registration works end to end (MVP complete)
-5. US4 → Test independently → qualitative feedback flows in
-6. US5 → Test independently → funnel is measurable
-7. US6 → Test independently → disclaimers present everywhere required
-8. Phase 9 → full-repo regression pass, quickstart walkthrough
+```text
+T069 ─┐
+T070 ─┼──→ T071 ─────────────────────────────┐
+      │                                       │
+T072 ─┘ (independent — track.js only)         │
+                                               ▼
+T073 ─────────────────────────→ T078 ◄── T077 ┤
+                                   │           │
+T069 ─→ T074 (tests, independent) │           │
+                                   │           │
+T075 ─→ T076 ─→ T082 ──────────────────────────┼──→ T085 ─┐
+                  │                             │          │
+T075 ─→ T081 ─────┘                             │          ▼
+                                                 │      T089-T093
+T075/T076/T077 → T080 (remove superseded files)  │          │
+                                                 │          ▼
+                          T083 ──→ T084 ─────────┘      T094-T096
+                            ↑
+                          T077
+
+T086 depends on T084
+T087-T093 depend on T086
+T097-T100 depend on Phases 10 (revised)–12 (revised)
+```
+
+## Parallel Opportunities
+
+Application code (no shared-file conflicts):
+
+```text
+T069  DynamoDbStorage in storage.py
+T070  pyproject.toml dependency additions
+T072  track.js landing_visit beacon
+```
+
+(T071 depends on both T069 and T070 completing; T073 has no dependency on any of T069-T072.)
+
+Deployment scripts (independent files):
+
+```text
+T075  provision_data.sh
+T076  provision_lambda.sh
+T077  provision_cdn.sh
+```
+
+Manual AWS provisioning must happen in dependency order (T081 → T082 → T083), not in
+parallel, since each later step's script references identifiers the earlier step creates.
+
+## Parallel Example: New Application Code
+
+```bash
+# Can be worked on together:
+Task: "Add DynamoDbStorage to src/aic/public/storage.py"
+Task: "Add mangum/boto3/moto to pyproject.toml and run uv sync"
+Task: "Add the landing_visit beacon to src/aic/public/static/track.js"
+```
 
 ---
 
-## Notes
+# Implementation Strategy
 
-- [P] tasks = different files, no dependencies (except where explicitly noted as a shared
-  file needing sequential application despite the `[P]` tag on other tasks in the same
-  story)
-- [Story] label maps task to specific user story for traceability
-- Commit after each task or logical group
-- Stop at any checkpoint to validate story independently
-- T009 (snapshot capture) and T034 (manual quickstart walkthrough) are the only tasks in
-  this feature that touch the network — every other task, including all automated tests,
-  is network-free
+## Current State
+
+Do **not** restart the implementation from Phase 1. Do **not** execute anything in the
+SUPERSEDED Phase 10 above.
+
+The public application and validation funnel are already implemented and tested. The
+current work begins at:
+
+```text
+T069
+```
+
+## Recommended Execution Sequence
+
+1. `DynamoDbStorage` (T069), dependencies (T070), `track.js` beacon (T072) — can be done
+   together.
+2. `lambda_handler.py` (T071).
+3. `DynamoDbStorage` tests against `moto` (T074) — confirm the storage layer is correct
+   before anything AWS-specific is provisioned.
+4. `build_static_site.py` (T073).
+5. The three provisioning scripts (T075–T077) and the two release scripts (T078–T079).
+6. Remove the five superseded Lightsail files (T080).
+7. Run `pytest`, `ruff check .`, `mypy src` across the whole repo — confirm the new code
+   doesn't regress anything before touching a real AWS account.
+8. Provision DynamoDB (T081), then Lambda (T082), then CloudFront/S3/ACM (T083); configure
+   DNS.
+9. Release static (T084) and Lambda (T085); confirm HTTPS (T086).
+10. Execute the complete production funnel (T087–T093).
+11. Verify independent-release persistence (T094–T096).
+12. Complete the Final Release Checklist (T097–T100).
+
+---
+
+# Important Constraints
+
+* The real domain is a required deployment input. **Never invent one.**
+* AWS credentials belong to the user/operator and must not be embedded in repository files.
+* Production secrets must not be committed.
+* `release_static.sh` and `release_lambda.sh` must never touch DynamoDB data.
+* The Lambda execution role must be scoped to exactly the three table ARNs plus CloudWatch
+  Logs — no administrator or wildcard-resource policy (FR-024).
+* The Amazon snapshot remains static and read-only at request time.
+* The public application must never execute the investment workflow for an individual
+  visitor, in Lambda or locally.
+* No new financial figures may be introduced during deployment.
+* No changes to DCF, research, Bull/Bear, committee, report, workflow, domain, or
+  LLM-provider logic are permitted.
+* No authentication, accounts, portfolios, trading, payments, subscriptions, or other
+  production SaaS functionality is introduced.
+* No API Gateway, unless a later revision demonstrates it's required and the spec is
+  formally revised (spec.md "Explicitly Forbidden for Feature 011").
+* The deployment architecture must remain intentionally minimal and serverless — no
+  always-running compute.
+
+---
+
+# Notes
+
+* T001–T034 are retained as completed — the application layer is unaffected by the
+  deployment architecture pivot.
+* T035–T039 remain marked complete because that work genuinely happened, but their output
+  (five files under `deploy/`) is superseded and removed by T080; do not treat them as
+  currently-correct deployment guidance.
+* T069–T080 are repository implementation tasks (application code + deployment scripts) and
+  can be authored/tested before AWS access exists — T074 in particular gives real
+  confidence in `DynamoDbStorage` via `moto` without needing a real AWS account.
+* T081–T100 require a real AWS account and/or real domain and therefore cannot be executed
+  or verified in a sandboxed environment.
+* DynamoDB is the source of truth for registrations, feedback, and validation events in
+  production; SQLite remains the source of truth locally and in tests (FR-021).
+* A successful deployment is not sufficient by itself: Feature 011 is complete only after
+  the real public funnel is exercised and a registration is demonstrated to survive both an
+  independent static-site release and an independent Lambda release.
+* The final success criterion remains validation of user interest, not proof of
+  product-market fit or readiness for a production investment platform.

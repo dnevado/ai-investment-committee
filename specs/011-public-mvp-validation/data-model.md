@@ -163,3 +163,75 @@ CREATE TABLE validation_events (
   `registrations.email` row — no foreign key, since feedback MUST succeed whether or not a
   matching registration exists (spec Edge Cases).
 - `ValidationEvent` has no relationship to any other table — pure counters.
+
+## Deployment revision (2026-08-16, first): Lightsail/SQLite — superseded, see below
+
+No new entities. Publishing the application on a single Lightsail instance would not
+have added, removed, or changed any field, table, or relationship above — the same three
+SQLite tables and the same `AmazonPresentation` read model would have run unmodified on
+the production instance, backed up periodically to S3 as opaque file snapshots. **This
+approach is superseded by the second revision below** — `spec.md` now explicitly forbids
+SQLite as the production persistence layer.
+
+## Deployment revision (2026-08-16, second, current): DynamoDB production schema
+
+`spec.md` now mandates DynamoDB for production persistence (FR-021) while explicitly still
+permitting SQLite for local development/tests (same FR). No `EarlyAccessRegistration` /
+`FeedbackSubmission` / `ValidationEvent` / `FunnelMetrics` Pydantic model above changes —
+`DynamoDbStorage` (new, in `storage.py`) reads/writes the exact same typed models the
+existing route handlers already construct and validate; only the on-disk/on-wire *storage*
+representation is new.
+
+### `registrations` (DynamoDB table)
+
+| Attribute | Type | Role |
+|---|---|---|
+| `email_normalized` | `S` (string) | **Partition key.** Chosen as the key itself (not `registration_id`) so the idempotent-registration requirement (FR-017) is a single atomic `put_item` call: `ConditionExpression="attribute_not_exists(email_normalized)"`. A resubmission with an already-known email fails the condition and is treated exactly like the existing SQLite path's "idempotent, not double-counted" behavior — no separate uniqueness index needed. |
+| `registration_id` | `S` | The same UUID `EarlyAccessRegistration.registration_id` already generates; stored as a plain attribute, not the key. |
+| `email` | `S` | Original (non-normalized) email, as typed by the visitor. |
+| `name`, `role`, `experience`, `interests`, `feedback` | `S`, optional | Unchanged from the Pydantic model; DynamoDB simply omits absent optional attributes rather than storing `NULL`. |
+| `qualified` | `BOOL` | Unchanged semantics from `classify_qualified`. |
+| `created_at` | `S` (ISO 8601) | Unchanged semantics. |
+
+No secondary index is needed: the only lookup pattern the app performs is "does this
+normalized email already exist" (the partition-key condition check above) and "count/scan
+all registrations in a time window" for `FunnelMetrics` (a table `Scan` with a
+`created_at` filter — acceptable at this feature's traffic volume; spec.md explicitly
+frames this as a low-volume validation experiment, not a system requiring `Query`-level
+scale).
+
+### `feedback_submissions` (DynamoDB table)
+
+| Attribute | Type | Role |
+|---|---|---|
+| `feedback_id` | `S` | **Partition key** (the same UUID the Pydantic model already generates — no natural uniqueness constraint applies here the way `email_normalized` does for registrations). |
+| `intended_use`, `most_valuable_part`, `trust_blockers`, `regular_use`, `willing_to_pay`, `pre_conditions`, `email` | `S`, all optional | Unchanged from `FeedbackSubmission`; absent optional answers are simply omitted attributes. |
+| `created_at` | `S` (ISO 8601) | Unchanged semantics. |
+
+### `validation_events` (DynamoDB table)
+
+| Attribute | Type | Role |
+|---|---|---|
+| `event_id` | `S` | **Partition key** (UUID, as `ValidationEvent` already generates). |
+| `event_type` | `S` | One of the fixed `EventType` literal values — unchanged. |
+| `created_at` | `S` (ISO 8601) | Unchanged semantics. |
+
+`FunnelMetrics` computation (`compute_funnel_metrics`) becomes a `Scan` with a
+`created_at`/`event_type` filter per table instead of a SQL `COUNT(...) WHERE ...` — same
+three formulas (FR-011), same zero-denominator guards, different underlying query
+mechanism inside `DynamoDbStorage` only; the `FunnelMetrics` model and its callers are
+unchanged.
+
+### Capacity mode
+
+On-Demand for all three tables (spec.md's explicit preference) — no provisioned
+read/write-capacity-unit planning, matching a small, irregular, experimental workload.
+
+### Relationships (unchanged in kind, different mechanism)
+
+- `AmazonPresentation` still has no relationship to any table — unchanged, still read-only
+  static content (now baked into the pre-rendered landing page at build time, per plan.md
+  "Deployment Technical Context").
+- `FeedbackSubmission.email`, if present, remains a soft, non-enforced link — DynamoDB has
+  no foreign-key concept either, so this was already the natural representation.
+- `ValidationEvent` remains relationship-free.

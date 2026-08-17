@@ -1,10 +1,26 @@
+from __future__ import annotations
+
 from datetime import UTC, date, datetime
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel
 
-from aic.domain import Evidence
 from aic.domain.enums import EvidenceType
-from aic.workflow import WorkflowResult
+
+if TYPE_CHECKING:
+    # `Evidence`/`WorkflowResult` are used only as type hints in
+    # `build_presentation`'s signature below — that function runs only in
+    # `scripts/capture_amazon_snapshot.py` (never at request-serving time,
+    # locally or in Lambda). Deferring these imports keeps `aic.workflow`
+    # (which pulls in the full DCF/research/bull-bear/committee/report/
+    # OpenAI chain) out of this module's *runtime* import graph — `aic.
+    # domain` alone (lightweight, self-contained: no imports outside
+    # itself) is enough for `EvidenceType` and the rest of this module to
+    # work. `from __future__ import annotations` makes this safe: every
+    # annotation in this file is a lazily-evaluated string, not resolved at
+    # import time.
+    from aic.domain import Evidence
+    from aic.workflow import WorkflowResult
 
 _CLASSIFICATION_LABELS: dict[EvidenceType, str] = {
     EvidenceType.FACT: "Reported fact",

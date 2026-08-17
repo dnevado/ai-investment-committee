@@ -174,22 +174,22 @@ def test_get_metrics_reflects_recorded_activity(client: TestClient) -> None:
 def test_landing_page_has_primary_and_secondary_cta_tracking_points(
     client: TestClient,
 ) -> None:
-    """"Get early access" is the single primary-action label, appearing at
-    the two entry points to /register (persistent nav + hero) — the page's
-    closing section deliberately keeps its own distinct "Challenge the case"
-    framing (self-selecting for the target user: someone willing to try to
-    break the thesis) as a different, later touchpoint in the same flow.
-    The hero's secondary action is a low-weight link into the full example
-    further down the page, tracked as `demo_view`. `example_cta_click`/
-    `workflow_cta_click` remain valid event types (storage/analytics schema
-    unchanged) but are deliberately unused on this page."""
+    """"Get early access" is the single primary-action label used
+    consistently everywhere it appears (persistent nav, hero, closing
+    section) — no competing CTA language. Secondary actions ("Explore the
+    Amazon case", "View the complete evidence trail") are deliberately
+    distinct, lower-weight text links rather than alternate primary-CTA
+    phrasing. `example_cta_click`/`workflow_cta_click` remain valid event
+    types (storage/analytics schema unchanged) but are deliberately unused
+    on this page."""
     response = client.get("/")
 
     assert 'data-track="hero_cta_click"' in response.text
     assert 'data-track="final_cta_click"' in response.text
     assert 'data-track="demo_view"' in response.text
-    assert response.text.count("Get early access") == 2  # nav + hero
-    assert "Challenge the case" in response.text  # closing section only
+    assert response.text.count("Get early access") == 3  # nav + hero + closing
+    assert "Explore the Amazon case" in response.text
+    assert "View the complete evidence trail" in response.text
 
 
 def test_landing_visit_classifies_mobile_device(client: TestClient) -> None:

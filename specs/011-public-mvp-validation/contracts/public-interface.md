@@ -1,7 +1,10 @@
 # Contract: `aic.public` HTTP Interface
 
-This feature's interface is a small FastAPI application (`aic.public.app:app`). This is
-the first feature in this project with an external HTTP surface; every route below is new.
+This feature's interface is a small FastAPI application (`aic.public.app:app`). Every route
+below is defined once, in `app.py`, and is unchanged by *how* it's invoked: directly by
+`uvicorn` locally, or via `Mangum` inside AWS Lambda in production (plan.md "Deployment
+Technical Context", research.md Decision 7) — the request/response contract described here
+is identical either way.
 
 ## Routes
 
@@ -16,6 +19,15 @@ CTAs (FR-006), and disclaimer text adjacent to the example and the CTA (FR-012).
 - MUST NOT make any LLM/network call — content is rendered entirely from the loaded
   `AmazonPresentation` snapshot.
 - Response: `text/html`.
+
+**Deployment note (2026-08-16)**: In production this route is not invoked live at all — it
+is the *source* for `scripts/build_static_site.py`'s one-time render, which is what S3/
+CloudFront actually serve (research.md Decision 7). The server-side `landing_visit`
+recording this route performs therefore never fires per real visitor in production;
+research.md Decision 9 resolves this by adding a `landing_visit` client-side beacon (same
+mechanism `track.js` already uses for other events) for production specifically. Locally
+(`uvicorn`), this route still records the event exactly as written, so `test_get_landing_
+page_records_one_landing_visit_event` remains accurate for local/test behavior.
 
 ### `POST /events`
 
@@ -48,7 +60,9 @@ Body (form-encoded, matching a plain HTML `<form>` — no JS required for the co
 - MUST treat a resubmission with an email already on file (case-insensitive) as
   idempotent: it MUST NOT create a second row and MUST NOT be double-counted in
   `completed_registrations` (FR-017) — implemented via the `email_normalized UNIQUE`
-  constraint (data-model.md).
+  constraint locally (`SqliteStorage`) and via a conditional `put_item` keyed on
+  `email_normalized` in production (`DynamoDbStorage`); same guarantee, storage-specific
+  mechanism (data-model.md).
 - On success: MUST record one `signup_completed` and one `early_access_requested`
   `ValidationEvent`, MUST NOT create any authentication session or account (FR-008), and
   MUST redirect (`303 See Other`) to a confirmation page making clear the visitor has
@@ -73,11 +87,20 @@ Body (form-encoded): the six answer fields (all individually optional) and an op
 
 Operator-facing (not linked from the public page). Query params: optional `since`/`until`
 (ISO 8601); defaults to all-time. Returns `FunnelMetrics` as JSON (data-model.md), computed
-live from the three SQLite tables — nothing pre-aggregated or cached, so it always reflects
-current data. No authentication is added for this route in this feature (spec Non-Goals
-rule out complex auth); if operator-only access control is needed before this is exposed
-beyond `localhost`, that is a deployment-time decision outside this plan's scope
-(research.md Decision 6).
+live from storage — three SQLite tables locally, three DynamoDB tables in production
+(`Scan` with filters — data-model.md) — nothing pre-aggregated or cached, so it always
+reflects current data. No authentication is added for this route in this feature (spec
+Non-Goals rule out complex auth).
+
+**Deployment note (2026-08-16, updated)**: This route is reachable through CloudFront (path
+prefix `/metrics*` → Lambda, research.md Decision 7) with no credential check — anyone with
+the URL can read funnel counts (no PII beyond what registrations/feedback already store
+server-side; the route returns aggregate counts and rates only, not individual rows). This
+is an accepted, explicit tradeoff for "simple," matching this feature's Non-Goal of no
+complex auth — not a silent gap. If this becomes a concern, the smallest fix is a
+shared-secret header/query param checked inside the existing route handler (`app.py`), or a
+CloudFront Function on the `/metrics*` behavior — either needs no new AWS service; this was
+not added by default since spec.md did not request it.
 
 ## Non-goals of this contract
 
@@ -86,7 +109,8 @@ beyond `localhost`, that is a deployment-time decision outside this plan's scope
   JavaScript disabled except for the non-blocking analytics beacon.
 - No authentication, session, or account creation anywhere in this contract (FR-008).
 - No route recomputes or calls into `aic.workflow`/`aic.research`/etc. — every route only
-  reads the static snapshot and/or reads/writes the three SQLite tables.
+  reads the static snapshot and/or reads/writes the three storage tables (SQLite locally,
+  DynamoDB in production — data-model.md).
 - No route exposes raw internal Pydantic `model_dump()` output of `WorkflowResult` or any
   `aic.domain`/`aic.dcf` type — only the `AmazonPresentation` read model (FR-004: "no raw
   Python/Pydantic object representations").

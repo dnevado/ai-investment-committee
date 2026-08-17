@@ -1,73 +1,183 @@
 # Implementation Plan: Public MVP Validation
 
-**Branch**: `011-public-mvp-validation` | **Date**: 2026-08-15 | **Spec**: [spec.md](./spec.md)
+**Branch**: `011-public-mvp-validation` | **Date**: 2026-08-16 (revised again) | **Spec**: [spec.md](./spec.md)
 
 **Input**: Feature specification from `/specs/011-public-mvp-validation/spec.md`
 
 **Note**: This template is filled in by the `/speckit-plan` command; its definition describes the execution workflow.
 
+**Revision history**:
+- **2026-08-16 (first revision)**: `spec.md` was replaced with a short deployment directive.
+  This plan was revised to add a single-Lightsail-instance deployment (systemd + Caddy +
+  SQLite-on-disk). `deploy/quorum.service`, `deploy/Caddyfile`, `deploy/provision.sh`,
+  `deploy/release.sh`, `deploy/backup_to_s3.sh` were written against that design.
+- **2026-08-16 (this revision)**: `spec.md` was replaced again, this time with a complete,
+  detailed spec (proper User Stories/FR/SC format) that **explicitly forbids** everything
+  the first revision built: Lightsail, EC2, systemd, Caddy, an always-running Python server,
+  and SQLite as the production store (FR-019–FR-023, "Explicitly Forbidden for Feature
+  011"). It mandates S3 + CloudFront + Lambda + DynamoDB instead. **The five `deploy/*`
+  files from the first revision are now superseded and must be replaced** — this plan
+  documents the new design; replacing those files is implementation work for after
+  `/speckit-tasks` regenerates tasks, not something this planning pass does itself.
+
 ## Summary
 
-Build a small, locally-runnable Python web application that presents AIC's brand and value
-proposition, shows the already-validated Amazon/AMZN investment example (feature 009/010)
-as a static, human-readable snapshot, and captures three things: CTA-driven early-access
-registrations, qualitative feedback, and validation-funnel events — all in SQLite. The
-Amazon example is captured once from a real `run_investment_workflow` run (no live LLM
-calls at request time), converted into a stable presentation/read model, and served as
-static content. No DCF, valuation, thesis, bull/bear, or committee logic is touched; the
-public layer only reads a snapshot and writes to three small SQLite tables. Actual live
-public deployment (domain, TLS, real hosting) is explicitly out of this plan's
-implementation scope — this plan produces a deployment-ready application, not a live
-deployment (see Constraints).
+**Application (done, frozen where the spec still allows)**: A Python web application
+presents Quorum's brand and value proposition, shows the already-validated Amazon/AMZN
+investment example (feature 009/010) as a static, human-readable snapshot, and captures
+CTA-driven early-access registrations, qualitative feedback, and validation-funnel events.
+The Amazon example is captured once from a real `run_investment_workflow` run (no live LLM
+calls at request time), converted into a stable presentation/read model. No DCF, valuation,
+thesis, bull/bear, or committee logic is touched by any of this (FR-014, FR-016 — still
+true, unconditionally).
+
+**This revision (new)**: Publish the application on AWS using a serverless architecture
+the spec specifies in detail: the landing page (`GET /` only) becomes a **pre-rendered
+static file** served from **S3 behind CloudFront**; every dynamic operation (register,
+feedback, events, metrics — including each one's own GET/POST routes) is served by the
+**existing, unmodified FastAPI route handlers**, now invoked through **AWS Lambda** (via a
+Mangum adapter) behind a **Lambda Function URL**, with **CloudFront routing by path**
+between the two origins. Production persistence moves from SQLite to **DynamoDB** — the
+only genuine *application* code addition this revision requires, and it is added as a new
+implementation of the existing `Storage` protocol (constitution Principle X: "depending on
+protocols/interfaces that infrastructure implements"), not a rewrite of anything upstream
+of it. Local development is unaffected: `uv run uvicorn aic.public.app:app --reload` keeps
+using `SqliteStorage` exactly as before (FR-021: "SQLite MAY remain available for local
+development/tests").
 
 ## Technical Context
 
-**Language/Version**: Python 3.12+ (matches the rest of the repo; no new version
-requirement).
+**Language/Version**: Python 3.12+ (unchanged).
 
-**Primary Dependencies**: `fastapi` (web framework — reuses the project's existing
-Pydantic investment directly for request/response validation), `uvicorn` (ASGI server,
-dev/local run), `jinja2` (server-rendered HTML templates), `python-multipart` (HTML form
-parsing for registration/feedback). `httpx` (needed for `TestClient`) is already present
-transitively via `openai`. No new LLM, RAG, vector-store, or orchestration dependency —
-LangGraph/LangChain remain unused, consistent with the existing baseline (never introduced
-because never yet needed).
+**Primary Dependencies (existing, unchanged)**: `fastapi`, `uvicorn` (local dev only now),
+`jinja2`, `python-multipart`.
 
-**Storage**: SQLite (stdlib `sqlite3`), per the constitution's existing "SQLite locally"
-baseline. Three tables: `registrations`, `feedback_submissions`, `validation_events`. No
-ORM — the tiny, fixed schema doesn't justify one (Constitution VIII).
+**Primary Dependencies (new this revision)**:
+- `mangum` — adapts the existing ASGI `FastAPI` app to the Lambda Function URL's request/
+  response event shape with no route-handler changes. Chosen over hand-writing a native
+  Lambda handler because it lets every existing route (`register.py`/`feedback.py`/
+  `events.py` logic, Pydantic validation, Jinja2 rendering for the GET form/confirmation
+  pages) run unmodified — see research.md Decision 7.
+- `boto3` — AWS SDK, for the new `DynamoDbStorage` implementation of the existing `Storage`
+  protocol. Already an implicit transitive presence in most Python AWS tooling; added
+  explicitly since `aic.public.storage` will import it directly.
 
-**Testing**: `pytest` with FastAPI's `TestClient` (Starlette, backed by the already-present
-`httpx`) — no real network, no real LLM calls, since the Amazon example is a static
-snapshot loaded at startup. `ruff check .` and `mypy src` MUST also pass.
+**Storage**: Two `Storage` protocol implementations now coexist, selected by which code
+constructs the app, never by an environment-variable branch inside `app.py` itself
+(preserves the existing dependency-injection pattern exactly):
+- `SqliteStorage` (existing, unchanged) — used by local dev (`app.py`'s module-level
+  `app = create_app()`) and every test.
+- `DynamoDbStorage` (new) — used only by the new `src/aic/public/lambda_handler.py`, which
+  constructs `create_app(storage=DynamoDbStorage(...), presentation=...)` and wraps the
+  result in `Mangum(...)`.
 
-**Target Platform**: Local server process (uvicorn), runnable identically to every other
-script in this repo (`uv run ...`). Deployable later behind any ASGI-capable host; this
-plan does not select or provision one (see Constraints).
+**Testing**: `pytest` with FastAPI's `TestClient` (unchanged) for everything except
+`DynamoDbStorage`, which is tested against a local DynamoDB emulation (`moto`'s DynamoDB
+mock, already a common lightweight choice — no real AWS calls in the test suite; see
+research.md Decision 8). `ruff check .` and `mypy src` MUST still pass across the whole
+repo.
 
-**Project Type**: Web application layer added to the existing single Python project — not
-a separate `backend/`/`frontend/` split. The "frontend" here is server-rendered HTML
-(Jinja2 templates + minimal CSS/vanilla JS for the registration/feedback forms), not a
-separate SPA project, keeping this feature's footprint small per its own Non-Goals
-(no design system, no build toolchain).
+**Target Platform**:
+- Local: unchanged — `uv run uvicorn aic.public.app:app --reload`, `SqliteStorage`.
+- Production: no persistent server process anywhere (FR-023, SC-014). The landing page is
+  a static file on S3; every dynamic route runs inside AWS Lambda, invoked only per-request.
 
-**Performance Goals**: N/A beyond "responsive for a small validation experiment" — no
-stated throughput target; SQLite and server-rendered HTML comfortably handle early-access
-validation traffic volumes.
+**Project Type**: Unchanged — single Python project, no `backend/`/`frontend/` split. This
+revision adds one new script (static-site build) and one new module
+(`lambda_handler.py` + a `DynamoDbStorage` class), not a new project.
 
-**Constraints**: MUST NOT modify `aic.dcf`, `aic.domain`, `aic.research`, `aic.bullbear`,
-`aic.committee`, `aic.report`, or `aic.workflow` (FR-014; spec Non-Goals). MUST NOT make a
-real OpenAI call at request-serving time (spec Assumptions: "static demonstration, not live
-recomputation"). MUST NOT introduce authentication/sessions (FR-008). Actual live public
-hosting (domain registration, TLS certificates, real S3/CDN wiring, DNS) is explicitly
-**out of scope for this plan** — this environment has no AWS credentials or domain-control
-access to provision those resources, and the constitution defers AWS until local validation
-works; this plan's Definition of Done is a fully working, tested, locally-runnable
-application that is deployment-ready, not a live URL.
+**Performance Goals**: Unchanged — N/A beyond "responsive for a small validation
+experiment." Lambda cold starts are the one new latency consideration; not addressed with
+provisioned concurrency in this pass (adds cost for a low-traffic validation experiment —
+constitution VIII, "low operating cost").
 
-**Scale/Scope**: One new package (`src/aic/public/`), one new script
-(`scripts/capture_amazon_snapshot.py`), one static JSON snapshot file, a handful of Jinja2
-templates, three SQLite tables, ~6-8 HTTP routes.
+**Constraints (updated this revision)**:
+- MUST NOT modify `aic.dcf`, `aic.domain`, `aic.research`, `aic.bullbear`, `aic.committee`,
+  `aic.report`, or `aic.workflow` (FR-016 — still true, unconditionally).
+- MUST NOT make a real OpenAI call at request-serving time, in Lambda or locally (FR-022 —
+  still true).
+- MUST NOT introduce authentication/sessions (still true — Non-Goals).
+- MUST NOT use Lightsail, EC2, systemd, Caddy, an always-running Python server, or SQLite as
+  the production persistence layer (spec.md "The deployment MUST NOT use" — new, explicit,
+  and directly overrides the first revision's design).
+- MUST NOT introduce API Gateway "unless implementation requires it and the additional
+  cost/complexity is justified" (spec.md) — Lambda Function URLs satisfy the HTTP-invocation
+  requirement without it; see research.md Decision 7.
+- This execution environment has no AWS credentials and cannot provision or verify real AWS
+  resources — every deployment artifact produced for this feature MUST be reviewed and
+  executed by the user with their own AWS credentials.
+- The custom domain name, AWS account/region, and any AWS resource identifiers are required
+  user inputs and MUST NOT be invented or assumed available.
+
+## Deployment Technical Context
+
+**Static site (S3 + CloudFront)**: Only the landing page (`GET /`) plus its static assets
+(`style.css`, `track.js`, `reveal.js`) are pre-rendered/copied into a build output directory
+and uploaded to a **private** S3 bucket, fronted by CloudFront using **Origin Access
+Control** (OAC) — not a public bucket, not the S3 static-website-hosting endpoint (which
+has no native HTTPS; spec.md notes this explicitly). A new script,
+`scripts/build_static_site.py`, renders `templates/landing.html` (with `templates/
+base.html`) through the *same* Jinja2 environment and `AmazonPresentation` snapshot
+`app.py` already uses — confirmed safe: no template references `request`/`url_for`, so
+rendering outside a live FastAPI request context produces byte-identical output. This
+script does not touch `register.html`/`feedback.html` — see next paragraph for why.
+
+**Dynamic routes (Lambda)**: `GET/POST /register` (+ `/register/confirmation`), `GET/POST
+/feedback` (+ `/feedback/confirmation`), `POST /events`, and `GET /metrics` all run inside
+one Lambda function that wraps the **existing, unmodified** `aic.public.app` FastAPI app
+via Mangum. Reasoning for including the GET form/confirmation pages in Lambda's scope
+(rather than pre-rendering them too): spec.md's S3 content list names only "landing page
+HTML" explicitly, and FR-020 says Lambda "at minimum" supports `register`/`feedback`/
+`events`/`metrics` as whole operations, not just their POST halves; splitting a single path
+prefix's GET and POST across two different origins would require method-aware CloudFront
+routing (Lambda@Edge/CloudFront Functions), which is meaningfully more complexity for zero
+functional benefit here — routing the whole `/register*` and `/feedback*` path prefixes to
+Lambda is simpler, still spec-compliant, and reuses 100% of the existing route code
+unmodified. Exposed via a **Lambda Function URL** (`AuthType: AWS_IAM`), not API Gateway —
+matches spec.md's explicit instruction to prefer "the simplest available Lambda HTTP
+invocation mechanism" before adding another managed service. CloudFront reaches the
+Function URL using **Origin Access Control for Lambda** (supported since 2024) so the
+Function URL cannot be invoked directly, bypassing CloudFront — see research.md Decision 7.
+
+**CloudFront routing**: one distribution, two origins, path-pattern behaviors:
+`/register*` → Lambda, `/feedback*` → Lambda, `/events*` → Lambda, `/metrics*` → Lambda,
+default (`/`, `/static/*`) → S3.
+
+**Persistence (DynamoDB)**: Three tables mirroring the existing SQLite schema 1:1 — the
+"simplest design that satisfies the access patterns" per spec.md, and the design most
+directly traceable to the already-tested `Storage` protocol's existing method contracts.
+On-Demand capacity mode (spec.md explicit preference). `registrations` is keyed by
+`email_normalized` directly (not a generated ID) so the idempotent-registration requirement
+(FR-017) is a single atomic `put_item` with `ConditionExpression="attribute_not_exists(
+email_normalized)"` — no separate uniqueness index needed. See data-model.md for full
+table designs.
+
+**IAM**: One Lambda execution role, scoped to `PutItem`/`GetItem`/`Query`/`Scan` on exactly
+the three table ARNs plus the standard CloudWatch Logs write permissions — no
+account-administrator or wildcard-resource policy (FR-024's IAM requirement).
+
+**TLS & DNS**: One ACM certificate for the custom domain, **in `us-east-1`** regardless of
+which region other resources live in (a hard CloudFront requirement — ACM certificates
+used by CloudFront must be requested in `us-east-1`). DNS: an ALIAS/CNAME record pointing
+the custom domain at the CloudFront distribution's domain name, in Route 53 if the zone is
+already there, otherwise at whatever registrar/DNS provider the user already uses (spec.md:
+Route 53 not required).
+
+**Deployment mechanism**: Shell scripts + AWS CLI (no Terraform/CDK, matching the reasoning
+already established in research.md Decision 6 for a single feature this size, extended here
+to the new resource set) — provisioning script(s) for the DynamoDB tables, Lambda function
++ Function URL + IAM role, and CloudFront distribution + S3 bucket + OAC, plus a release
+script that rebuilds the static site, uploads it to S3, invalidates the CloudFront cache
+for `/` and `/static/*`, and updates the Lambda function code. Concretely replaces the five
+`deploy/*` files from the first revision — new filenames are proposed in the updated
+Project Structure below; actually writing them is `/speckit-tasks` + implementation work,
+not this planning pass.
+
+**Scale/Scope**: `src/aic/public/` gains one new module (`lambda_handler.py`) and one new
+class (`DynamoDbStorage`, likely within `storage.py` alongside `SqliteStorage`, same file,
+same `Storage` protocol). One new top-level script
+(`scripts/build_static_site.py`). `deploy/` is rewritten (five old files removed, replaced
+with S3/CloudFront/Lambda/DynamoDB-oriented artifacts — enumerated in Project Structure).
 
 ## Constitution Check
 
@@ -75,28 +185,25 @@ templates, three SQLite tables, ~6-8 HTTP routes.
 
 | Principle | Check | Result |
 |---|---|---|
-| I. Evidence Before Opinion | Presentation model preserves FACT/CALCULATION/ASSUMPTION labels from the captured snapshot; no new claims invented | PASS |
-| II. LLM Proposes, Code Computes | No LLM call in this feature's request path at all (static snapshot); no arithmetic performed here either | PASS |
-| III. Structured Outputs Only | Registration/feedback/event payloads are Pydantic models end to end (FastAPI request/response schemas) | PASS |
-| IV. Bull/Bear Symmetry | Not touched — snapshot displays the already-generated, already-symmetric Bull/Bear pair unchanged | N/A |
-| V. Explicit Assumptions | Snapshot surfaces the same key_assumptions/key_risks already produced by the validated workflow | PASS |
-| VI. Deterministic Valuation | Not touched — DCF engine untouched; snapshot is a frozen, already-validated result | PASS |
-| VII. Traceability | Snapshot preserves evidence source metadata; presented per FR-005 | PASS |
-| **VIII. Minimal Architecture, No Premature Infrastructure** | **Explicit MVP exclusion for "a frontend application" is being knowingly overridden** | **Justified deviation — see below** |
-| IX. No RAG in MVP | Not applicable — no retrieval introduced | N/A |
-| X. Provider Abstraction | Not touched — no new/duplicated `LLMProvider` | PASS |
+| I. Evidence Before Opinion | Unchanged — presentation model still preserves FACT/CALCULATION/ASSUMPTION labels; no new claims invented | PASS |
+| II. LLM Proposes, Code Computes | Unchanged — no LLM call in any request path, Lambda included | PASS |
+| III. Structured Outputs Only | Unchanged, and reinforced: `DynamoDbStorage` still speaks the same Pydantic-modeled `Storage` protocol as `SqliteStorage` — no new untyped interface introduced | PASS |
+| IV. Bull/Bear Symmetry | N/A — unchanged | N/A |
+| V. Explicit Assumptions | Unchanged | PASS |
+| VI. Deterministic Valuation | Unchanged — DCF engine untouched | PASS |
+| VII. Traceability | Unchanged | PASS |
+| **VIII. Minimal Architecture, No Premature Infrastructure** | AWS deferral condition remains satisfied (application built and tested, per the earlier revision's finding). The specific services now mandated (S3, CloudFront, Lambda, DynamoDB) are not among VIII's still-excluded items (no Kubernetes, no microservices/Kafka/Redis, no RDS/PostgreSQL, no complex event-driven architecture) and are explicitly, narrowly scoped by spec.md's own "Explicitly Forbidden" list to stay minimal | **PASS** |
+| IX. No RAG in MVP | N/A — unchanged | N/A |
+| X. Provider Abstraction | **Directly exercised, not violated**: `DynamoDbStorage` is a second implementation of the pre-existing `Storage` protocol, exactly the pattern this principle calls for ("depending on protocols/interfaces that infrastructure implements") | PASS |
 
-**Gap found; explicitly justified (not silently overridden)**: Constitution Principle VIII
-lists "a frontend application" among items explicitly excluded from the MVP. Feature 011's
-own spec documents this as a deliberate, conscious exception (see spec.md Assumptions
-"Constitution interaction"), authorized by an explicit, detailed user requirement and by
-the project's own `aic-brand-landing` skill (written in advance specifically to guide this
-work) — which the constitution's own Governance section ranks above architecture principles
-when the user's requirement is explicit. Recorded formally in Complexity Tracking below.
-Every other MVP-VIII exclusion (RAG, vector DB, pgvector, Kubernetes, microservices, Kafka,
-Redis, complex event-driven architecture, autonomous agent-to-agent communication) is still
-fully honored — this deviation is scoped to "a frontend application" only, and the smallest
-version of one this feature can get away with.
+**Historical gap, already justified (not repeated here)**: The original "frontend
+application" exclusion override is documented in Complexity Tracking below and remains
+accurate; nothing about this revision changes that reasoning.
+
+**New consideration, not a violation**: Swapping SQLite for DynamoDB in production is a
+spec-mandated (FR-021), narrowly-scoped change to one already-abstracted layer
+(`aic.public.storage`), consistent with — not in tension with — constitution Principle X.
+No new Complexity Tracking entry is needed for it.
 
 No other unjustified violations.
 
@@ -117,53 +224,75 @@ specs/011-public-mvp-validation/
 ### Source Code (repository root)
 
 ```text
-src/aic/public/                     # new package — the "CLI / Public interface" +
-│                                    # "Application" layers for this feature only
+src/aic/public/                     # existing package — unchanged except as noted (*)
 ├── __init__.py
-├── app.py                          # FastAPI app factory + route wiring
-├── presentation.py                 # AmazonPresentation read model + builder from
-│                                    # a WorkflowResult (or loaded snapshot JSON)
-├── registration.py                 # EarlyAccessRegistration model, validation,
-│                                    # "qualified" classification (spec Assumptions)
-├── feedback.py                     # FeedbackSubmission model (six questions)
-├── events.py                       # ValidationEvent model + funnel metric queries
-├── storage.py                      # SQLite persistence (Protocol + sqlite3 impl;
-│                                    # swappable for tests via an in-memory DB)
-├── templates/                      # Jinja2 HTML (landing, registration, feedback,
-│                                   #   confirmation)
-└── static/                         # minimal CSS/JS (no framework/build step)
+├── app.py                          # FastAPI app factory + route wiring — UNCHANGED;
+│                                    # the same app object is used locally (uvicorn) and
+│                                    # in Lambda (via lambda_handler.py + Mangum)
+├── lambda_handler.py               # (*) NEW — `handler = Mangum(create_app(
+│                                    #   storage=DynamoDbStorage(...), presentation=...))`;
+│                                    #   the only file that knows this app can run on Lambda
+├── presentation.py                 # UNCHANGED
+├── registration.py                 # UNCHANGED
+├── feedback.py                     # UNCHANGED
+├── events.py                       # UNCHANGED
+├── storage.py                      # (*) gains `DynamoDbStorage`, a second implementation
+│                                    #   of the existing `Storage` protocol, alongside the
+│                                    #   unchanged `SqliteStorage`
+├── templates/                      # UNCHANGED (still used both for local serving AND as
+│                                    #   the source templates for the static-site build)
+└── static/                         # UNCHANGED (copied verbatim into the static-site build
+                                     #   output; still also served locally by FastAPI)
 
 data/
-└── amazon_snapshot.json            # captured AmazonPresentation, checked into the
-                                     # repo; loaded at app startup, never recomputed
+└── amazon_snapshot.json            # UNCHANGED
 
 scripts/
-└── capture_amazon_snapshot.py      # one-off script: runs run_investment_workflow
-                                     # for Amazon (real OpenAI call, run manually) and
-                                     # writes data/amazon_snapshot.json
+├── capture_amazon_snapshot.py      # UNCHANGED
+└── build_static_site.py            # NEW — renders landing.html via the same Jinja2
+                                     # environment/snapshot as app.py, copies static/,
+                                     # writes a build output directory (e.g. `dist/`) ready
+                                     # for S3 upload
 
-tests/unit/public/                  # new, network-free test directory (public_-
-│                                    # prefixed basenames from the start, per the
-│                                    # 006/007/009/010 lesson on cross-directory
-│                                    # test-module collisions)
+deploy/                             # REWRITTEN this revision — the five files from the
+│                                    # first revision (quorum.service, Caddyfile,
+│                                    # provision.sh, release.sh, backup_to_s3.sh) are
+│                                    # superseded and will be removed; replaced with:
+├── provision_data.sh               # one-time: create the 3 DynamoDB tables (AWS CLI)
+├── provision_lambda.sh             # one-time: create the Lambda function, its execution
+│                                    # role/policy, and its Function URL
+├── provision_cdn.sh                # one-time: create the private S3 bucket, the
+│                                    # CloudFront distribution (2 origins, OAC for both),
+│                                    # and request the ACM certificate
+├── release_static.sh               # repeatable: run build_static_site.py, sync `dist/`
+│                                    # to S3, invalidate the CloudFront cache
+└── release_lambda.sh               # repeatable: package src/aic/public/ + dependencies
+                                     # and update the Lambda function code
+                                     # (exact script boundaries/names may be refined during
+                                     # /speckit-tasks — this is the planning-level shape)
+
+tests/unit/public/                  # existing tests unchanged; gains new test module(s)
+│                                    # for DynamoDbStorage (moto-mocked, no real AWS calls)
 ├── public_fakes.py
 ├── test_public_presentation.py
 ├── test_public_registration.py
 ├── test_public_feedback.py
 ├── test_public_events.py
-├── test_public_storage.py
-└── test_public_app.py              # FastAPI TestClient integration tests
+├── test_public_storage.py          # gains DynamoDbStorage coverage alongside existing
+│                                    # SqliteStorage coverage (same file, or a sibling
+│                                    # test_public_storage_dynamodb.py — decided in tasks)
+└── test_public_app.py              # unchanged — still exercises the FastAPI app directly
+                                     # via TestClient, independent of which Storage it's
+                                     # constructed with
 ```
 
-**Structure Decision**: Single existing Python project, one new package
-(`src/aic/public/`) added alongside the existing `aic.dcf`/`aic.research`/`aic.bullbear`/
-`aic.committee`/`aic.report`/`aic.workflow` packages — no `backend/`/`frontend/` split, no
-new top-level project. `aic.public` depends on `aic.workflow`'s output type
-(`WorkflowResult`) only at snapshot-capture time (via the new script); at request-serving
-time it depends on nothing from those packages, only on the static JSON snapshot and its
-own `storage.py` (SQLite). This keeps the dependency direction from spec.md intact:
-`CLI / Public interface (aic.public.app) → Application (aic.public.*) → Domain
-(aic.domain, read at capture time only) ↑ Infrastructure (aic.public.storage)`.
+**Structure Decision**: Still a single existing Python project, no `backend/`/`frontend/`
+split, no new top-level project. The only genuinely new *application* code is
+`lambda_handler.py` (a thin adapter, ~5 lines) and `DynamoDbStorage` (a new class behind an
+existing protocol) — everything else in `src/aic/public/` is unchanged. `deploy/` and
+`scripts/build_static_site.py` remain outside `src/`, containing no code the running
+application imports, consistent with the existing "no code that only exists for deployment
+leaks into the application" boundary.
 
 ## Complexity Tracking
 
